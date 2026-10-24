@@ -1,0 +1,10 @@
+# Variables d'environnement locales (tokens & secrets)
+.env.local
+.env
+.env.*.local
+
+# Dossiers Node
+node_modules/
+
+# Logs
+*.log
