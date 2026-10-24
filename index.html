@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAB-SANTE - Interconnexion des Structures Hospitalières Universitaires du Gabon</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+</head>
+<body>
+
+  <!-- Barre latérale / Navigation principale -->
+  <aside class="sidebar">
+    <div class="brand-header">
+      <div class="brand-flag">
+        <div class="flag-green"></div>
+        <div class="flag-yellow"></div>
+        <div class="flag-blue"></div>
+      </div>
+      <div>
+        <div class="brand-title">GAB-SANTE</div>
+        <div class="brand-sub">Réseau Hospitalier Universitaire</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-view="overview">
+        <span class="nav-icon">🏥</span>
+        <span>Vue Inter-CHU & Lits</span>
+      </a>
+      <a class="nav-item" data-view="dmp">
+        <span class="nav-icon">🗂️</span>
+        <span>Dossier Médical (DMP)</span>
+      </a>
+      <a class="nav-item" data-view="transfers">
+        <span class="nav-icon">🚑</span>
+        <span>Régulation & Transferts</span>
+      </a>
+      <a class="nav-item" data-view="tele-expertise">
+        <span class="nav-icon">🩺</span>
+        <span>Télé-Expertise & RCP</span>
+      </a>
+      <a class="nav-item" data-view="blood">
+        <span class="nav-icon">🩸</span>
+        <span>Banque de Sang (CNTS)</span>
+      </a>
+      <a class="nav-item" data-view="stats" style="background: linear-gradient(90deg, rgba(220, 38, 38, 0.08), transparent); border-left: 3px solid #dc2626;">
+        <span class="nav-icon">🛡️</span>
+        <span>Vigilance Épidémio (DGS)</span>
+      </a>
+      <a class="nav-item" data-view="fhir">
+        <span class="nav-icon">⚙️</span>
+        <span>Interopérabilité HL7/FHIR</span>
+      </a>
+      <a class="nav-item" data-view="ai-assistant" style="background: linear-gradient(90deg, rgba(2, 132, 199, 0.12), transparent); border-left: 3px solid #0284c7;">
+        <span class="nav-icon">🤖</span>
+        <span>IA Clinique & Aide</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="network-badge">
+        <span class="network-dot"></span>
+        <span>RÉSEAU SÉCURISÉ ACTIF</span>
+      </div>
+      <div>Régulation SAMU 1300 connectée</div>
+      <div style="margin-top: 4px; color: #64748b; font-size: 0.7rem;">Ministère de la Santé du Gabon</div>
+    </div>
+  </aside>
+
+  <!-- Contenu Principal -->
+  <div class="main-wrapper">
+    <!-- Barre Supérieure -->
+    <header class="topbar">
+      <div class="chu-selector-box">
+        <label for="current-chu-select" style="font-size: 0.8rem; font-weight: 600; color: #475569;">
+          Poste Hôpital Actif :
+        </label>
+        <select id="current-chu-select" class="chu-badge-select">
+          <!-- Rempli dynamiquement par JS -->
+        </select>
+      </div>
+
+      <div class="topbar-actions">
+        <div id="cloud-sync-status-badge" style="font-size: 0.74rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; display: flex; align-items: center; gap: 6px;" title="Statut de synchronisation Cloud Supabase">
+          <span style="color:#10b981;">●</span> Santé-Gab Cloud : Connecté
+        </div>
+        <div id="live-clock" style="font-size: 0.8rem; font-weight: 600; color: #64748b;"></div>
+        <button class="btn-secondary" id="btn-bed-logs" onclick="saniApp.openBedLogsModal()" title="Journal d'audit des mouvements de lits">
+          <span>📜</span> Mouvements Lits
+        </button>
+        <button class="btn-secondary" id="btn-backup-modal" onclick="saniApp.openBackupModal()" title="Sauvegarde, restauration et exports">
+          <span>💾</span> Sauvegarde & Données
+        </button>
+        <button class="btn-secondary" id="btn-add-hospital" onclick="saniApp.openHospitalModal()">
+          <span>🏛️</span> Raccorder une Structure
+        </button>
+        <button class="btn-primary" id="btn-new-patient">
+          <span>➕</span> Nouveau Patient DMP
+        </button>
+        <button class="btn-urgency" id="btn-new-transfer">
+          <span>🚨</span> Transfert SAMU
+        </button>
+      </div>
+    </header>
+
+    <!-- Zone de Contenu Dynamique -->
+    <main class="content-container">
+
+      <!-- Vue 1: Vue d'ensemble & Matrice des Lits -->
+      <section id="view-overview" class="app-view">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-icon-blue">🏥</div>
+            <div>
+              <div class="stat-value" id="stat-total-beds">1036 / 1210</div>
+              <div class="stat-label">Lits d'hospitalisation occupés</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-icon-green">📈</div>
+            <div>
+              <div class="stat-value" id="stat-occ-rate">86%</div>
+              <div class="stat-label">Taux d'occupation global</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-icon-amber">🫁</div>
+            <div>
+              <div class="stat-value" id="stat-rea-beds">71 / 86 (83%)</div>
+              <div class="stat-label">Lits de réanimation occupés</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-icon-purple">🏛️</div>
+            <div>
+              <div class="stat-value" id="stat-connected-chu">4 Structures</div>
+              <div class="stat-label">Établissements interconnectés</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar & Carte Interactive Libreville - Owendo - Akanda -->
+        <div class="radar-map-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a;">
+                🗺️ Corridor Sanitaire National & Cartographie Inter-CHU (Grand Libreville)
+              </h2>
+              <p style="font-size: 0.78rem; color: #64748b;">
+                Surveillance en temps réel des liaisons médicalisées, ambulances SMUR et disponibilité des lits critiques.
+              </p>
+            </div>
+            <div style="font-size: 0.75rem; color: #0072ce; font-weight: 600;">
+              Liaison sécurisée VPN Santé Gabon
+            </div>
+          </div>
+          <div id="chu-interactive-map"></div>
+        </div>
+
+        <!-- Cartes des Structures Hospitalières Raccordées -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a;">
+              Structures Hospitalières Raccordées au Réseau GAB-SANTE
+            </h2>
+            <p style="font-size: 0.78rem; color: #64748b;">Surveillance de l'état opérationnel et de la disponibilité des lits par établissement</p>
+          </div>
+          <button class="btn-primary" onclick="saniApp.openHospitalModal()" style="font-size: 0.82rem;">
+            <span>➕ 🏛️</span> Raccorder une Nouvelle Structure
+          </button>
+        </div>
+        <div class="chu-cards-grid" id="chu-cards-container"></div>
+      </section>
+
+      <!-- Vue 2: Dossier Médical Partagé (DMP) -->
+      <section id="view-dmp" class="app-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">🗂️ Dossier Médical Partagé Inter-CHU (DMP-Gabon)</h2>
+            <p style="font-size: 0.8rem; color: #64748b;">Accès unifié aux dossiers patients avec traçabilité complète CNAMGS & Ministère de la Santé.</p>
+          </div>
+          <button class="btn-primary" onclick="saniApp.openPatientModal()">
+            ➕ Créer un Dossier Patient
+          </button>
+        </div>
+
+        <div class="search-bar-wrap">
+          <input type="text" id="dmp-search-input" class="search-input" placeholder="🔍 Rechercher par N° CNAMGS, INS, Nom du patient, Régime d'assurance, ou CHU..." oninput="saniApp.filterPatients(this.value)">
+        </div>
+
+        <div class="filter-pills-bar" id="insurance-filter-pills">
+          <span style="font-size: 0.76rem; font-weight: 700; color: #475569; margin-right: 4px;">Régimes :</span>
+          <button class="filter-pill active" data-filter="all" onclick="saniApp.filterPatientsByInsurance('all', this)">Tous</button>
+          <button class="filter-pill" data-filter="CNAMGS_FONC" onclick="saniApp.filterPatientsByInsurance('CNAMGS_FONC', this)">🏛️ CNAMGS Fonctionnaires (80%)</button>
+          <button class="filter-pill" data-filter="CNAMGS_PVNR" onclick="saniApp.filterPatientsByInsurance('CNAMGS_PVNR', this)">🤝 CNAMGS PVNR (100%)</button>
+          <button class="filter-pill" data-filter="CNAMGS_SECT_PRIVE" onclick="saniApp.filterPatientsByInsurance('CNAMGS_SECT_PRIVE', this)">🏢 CNAMGS Privé (80%)</button>
+          <button class="filter-pill" data-filter="CNSS" onclick="saniApp.filterPatientsByInsurance('CNSS', this)">🛡️ CNSS (100%)</button>
+          <button class="filter-pill" data-filter="mutuelle" onclick="saniApp.filterPatientsByInsurance('mutuelle', this)">🎖️ Mutuelles</button>
+          <button class="filter-pill" data-filter="privee" onclick="saniApp.filterPatientsByInsurance('privee', this)">🔵 Privées / ASCOMA</button>
+          <button class="filter-pill" data-filter="NON_ASSURE" onclick="saniApp.filterPatientsByInsurance('NON_ASSURE', this)">💰 Non Assuré</button>
+        </div>
+
+        <div class="data-table-card">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Patient & Naissance</th>
+                <th>Régime & Prise en Charge</th>
+                <th>Identifiants (CNAMGS / INS)</th>
+                <th>Groupe Sanguin</th>
+                <th>CHU Actuel & Service</th>
+                <th>Antécédents & Vigilances</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dmp-patients-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Vue 3: Régulation des Transferts Inter-CHU -->
+      <section id="view-transfers" class="app-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">🚑 Régulation des Transferts d'Urgence (SAMU 1300)</h2>
+            <p style="font-size: 0.8rem; color: #64748b;">Coordination médicale des transferts entre le CHUL, CHUO, Jeanne Ebori, Angondjé et structures associées.</p>
+          </div>
+          <button class="btn-urgency" onclick="saniApp.openTransferModal()">
+            🚨 Déclarer un Transfert
+          </button>
+        </div>
+
+        <div class="data-table-card">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Réf. & Heure</th>
+                <th>Patient & Score Gravité</th>
+                <th>Itinéraire Inter-CHU</th>
+                <th>Motif Médicalisé</th>
+                <th>Statut / ETA</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="transfers-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Vue 4: Télé-Expertise & RCP -->
+      <section id="view-tele-expertise" class="app-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">🩺 Télé-Expertise & Réunions Pluridisciplinaires (RCP)</h2>
+            <p style="font-size: 0.8rem; color: #64748b;">Sollicitation d'avis experts à distance entre spécialistes du réseau (Cancérologie, Orthopédie, Pédiatrie, Armées).</p>
+          </div>
+          <button class="btn-primary" id="btn-new-rcp">
+            💬 Nouvelle Télé-Expertise
+          </button>
+        </div>
+        <div id="rcp-cards-container"></div>
+      </section>
+
+      <!-- Vue 5: Banque de Sang CNTS -->
+      <section id="view-blood" class="app-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">🩸 Banque de Sang Interconnectée (CNTS)</h2>
+            <p style="font-size: 0.8rem; color: #64748b;">Suivi des concentrés de globules rouges (CGR) au CNTS et dans les dépôts d'urgence des structures raccordées.</p>
+          </div>
+        </div>
+        <div id="blood-bank-container"></div>
+      </section>
+
+      <!-- Vue 6: Statistiques & Épidémiologie -->
+      <section id="view-stats" class="app-view" style="display: none;">
+        <div style="margin-bottom: 1.25rem;">
+          <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">📊 Indicateurs Hospitaliers & Veille Épidémiologique</h2>
+          <p style="font-size: 0.8rem; color: #64748b;">Données consolidées pour le Ministère de la Santé du Gabon.</p>
+        </div>
+        <div id="stats-view-container"></div>
+      </section>
+
+      <!-- Vue 7: FHIR Interopérabilité -->
+      <section id="view-fhir" class="app-view" style="display: none;">
+        <div style="margin-bottom: 1.25rem;">
+          <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a;">⚙️ Hub d'Interopérabilité HL7 / FHIR R4</h2>
+          <p style="font-size: 0.8rem; color: #64748b;">Flux standardisés pour l'interconnexion avec les systèmes d'information hospitaliers (SIH) existants.</p>
+        </div>
+        <div id="fhir-view-container"></div>
+      </section>
+
+      <!-- Vue 8: IA Clinique & Aide au Diagnostic -->
+      <section id="view-ai-assistant" class="app-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+              <span>🤖</span> Assistant IA Clinique & Aide à la Décision
+              <span class="badge badge-blue" style="font-size: 0.72rem; padding: 3px 8px;">RÉSEAU GAB-SANTE</span>
+            </h2>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+              Analyse des dossiers médicaux partagés, contre-indications pharmacologiques, alertes protocolaires et avis spécialisés inter-CHU.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" onclick="saniApp.toggleAiConfigPanel()" style="font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+              <span>⚙️</span> Configuration IA & Prompts
+            </button>
+            <button class="btn-secondary" onclick="saniApp.clearAiChat()" style="font-size: 0.8rem; color: #dc2626; border-color: #fecdd3;" title="Effacer l'historique">
+              <span>🗑️</span> Nouveau Chat
+            </button>
+          </div>
+        </div>
+
+        <!-- Panneau rétractable de Configuration de l'IA (Clé API & Prompt) -->
+        <div id="ai-config-panel" style="display: none; background: #ffffff; border: 1px solid #bae6fd; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #e0f2fe; padding-bottom: 0.5rem;">
+            <div style="font-weight: 700; color: #0369a1; font-size: 0.95rem;">
+              🔑 Clé API & Paramètres du Modèle d'Intelligence Artificielle
+            </div>
+            <button type="button" onclick="saniApp.toggleAiConfigPanel()" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #64748b;">✕</button>
+          </div>
+
+          <form id="form-ai-config" onsubmit="saniApp.saveAiConfig(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            <div>
+              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">Fournisseur d'IA</label>
+              <select id="ai-cfg-provider" style="width: 100%; padding: 0.55rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;" onchange="saniApp.onAiProviderChange()">
+                <option value="openrouter" selected>OpenRouter (Accès universel: Claude, GPT, Gemini, Llama, DeepSeek)</option>
+                <option value="gemini">Google Gemini (Clé AI Studio directe)</option>
+                <option value="openai">OpenAI (Direct sk-...)</option>
+                <option value="deepseek">DeepSeek API Directe</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">Modèle d'IA</label>
+              <select id="ai-cfg-model-select" style="width: 100%; padding: 0.55rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;" onchange="saniApp.onAiModelSelectChange()">
+                <optgroup label="✨ Modèles Gratuits Confirmés (0 Crédit Requis sur OpenRouter)">
+                  <option value="nvidia/nemotron-3.5-lightning:free" selected>⚡ NVIDIA Nemotron 3.5 Lightning (Gratuit • 100% Opérationnel)</option>
+                  <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">🧠 Nemotron 3 Nano Omni Reasoning (Gratuit • Raisonnement)</option>
+                  <option value="google/gemma-4-31b-it:free">🔬 Google Gemma 4 31B (Gratuit)</option>
+                  <option value="dots-studio/dots-3-note-preview:free">📝 Dots 3 Note Preview (Gratuit)</option>
+                </optgroup>
+                <optgroup label="💳 Modèles Payants (Nécessite des Crédits OpenRouter)">
+                  <option value="deepseek/deepseek-r1-0528">DeepSeek R1 (Version officielle payante)</option>
+                  <option value="openai/gpt-4o-mini">OpenAI GPT-4o-mini</option>
+                  <option value="anthropic/claude-3.5-sonnet">Anthropic Claude 3.5 Sonnet</option>
+                </optgroup>
+                <option value="__custom__">✏️ Modèle personnalisé (Saisie manuelle)...</option>
+              </select>
+              <input type="text" id="ai-cfg-model" value="nvidia/nemotron-3.5-lightning:free" placeholder="Nom exact du modèle" style="display: none; width: 100%; margin-top: 6px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem; box-sizing: border-box;">
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+              <label style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                <span>Clé API Secrète (API Key)</span>
+                <span id="ai-key-status" style="font-weight: 600; font-size: 0.75rem;"></span>
+              </label>
+              <div style="display: flex; gap: 8px;">
+                <input type="password" id="ai-cfg-key" placeholder="Collez votre clé OpenRouter (ex: sk-or-v1-...)" style="flex: 1; padding: 0.55rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;">
+                <button type="button" class="btn-secondary" onclick="saniApp.toggleApiKeyVisibility()" style="padding: 0.55rem 0.8rem; font-size: 0.8rem;">👁️ Afficher</button>
+              </div>
+              <p style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">
+                🔒 Votre clé est stockée localement dans votre navigateur et dans <code>.env.local</code>. Elle n'est jamais transmise à des tiers.
+              </p>
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">Prompt Système Médical Gabonais</label>
+              <textarea id="ai-cfg-system-prompt" rows="3" style="width: 100%; padding: 0.55rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.8rem; font-family: monospace; box-sizing: border-box;"></textarea>
+            </div>
+
+            <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px;">
+              <button type="submit" class="btn-primary" style="padding: 0.55rem 1.25rem;">
+                💾 Enregistrer la Clé & le Prompt
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Interface principale du Chat IA & Outils Cliniques -->
+        <div style="display: grid; grid-template-columns: 320px 1fr; gap: 1.25rem; align-items: start;">
+          
+          <!-- Colonne Gauche : Raccourcis médicaux et injection de contexte -->
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            
+            <!-- Carte 1: Raccourcis Cliniques & Prise en Charge Rapide -->
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 0.6rem; letter-spacing: 0.5px;">
+                ⚡ Protocoles d'Urgence Gabon
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.45rem 0.7rem;" onclick="saniApp.aiQuickAction('palu')">
+                  🦟 <strong>Paludisme Grave :</strong> Protocole Artésunate IV
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.45rem 0.7rem;" onclick="saniApp.aiQuickAction('drepanocytose')">
+                  🩸 <strong>Drépanocytose SS :</strong> Crise vaso-occlusive
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.45rem 0.7rem;" onclick="saniApp.aiQuickAction('interaction')">
+                  💊 <strong>Pharmaco-vigilance :</strong> Vérifier interactions
+                </button>
+              </div>
+            </div>
+
+            <!-- Carte 1 Bis : Outils IA Hospitaliers Avancés (Nouveau) -->
+            <div style="background: linear-gradient(135deg, #f0fdf4, #ffffff); border: 1.5px solid #86efac; border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 0.82rem; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 0.6rem; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
+                <span>🛠️ Fonctions IA Avancées</span>
+                <span class="badge badge-green" style="font-size: 0.65rem;">GAB-SANTE</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 7px;">
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiGenerateDischargeSummary()">
+                  📝 <strong>Courrier de Sortie Hospitalier :</strong> Rédiger automatiquement
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.74rem; padding: 0.45rem 0.75rem; border-color: #38bdf8; background: #f0f9ff; color: #0284c7; display: flex; align-items: center; justify-content: space-between;" onclick="saniApp.printLastAiDischargeSummary()">
+                  <span>🖨️ <strong>Imprimer le Courrier de Sortie</strong></span>
+                  <span style="font-size: 0.68rem; background: #e0f2fe; padding: 1px 6px; border-radius: 4px; font-weight: 700;">PDF / Imprimer</span>
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiTriageSamuScore()">
+                  🚑 <strong>Triage SAMU 1300 :</strong> Calcul score gravité & lit réa
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiEpidemioAnalysis()">
+                  📊 <strong>Veille Épidémiologique :</strong> Bilan hebdomadaire Gabon
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiPrepareRcpSynthesis()">
+                  🩺 <strong>Synthèse RCP :</strong> Dossier staff télé-expertise
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiDifferentialDiagnosis()">
+                  🔬 <strong>Diagnostic Différentiel :</strong> Aide à l'identification
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiPediatricDosage()">
+                  💉 <strong>Posologie Pédiatrique :</strong> Calcul par poids et âge
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiSummarizeDmp()">
+                  📋 <strong>Résumé DMP :</strong> Synthèse complète du dossier
+                </button>
+                <button type="button" class="btn-secondary" style="text-align: left; font-size: 0.76rem; padding: 0.5rem 0.75rem; border-color: #bbf7d0; background: white;" onclick="saniApp.aiInterpretLabResults()">
+                  🧪 <strong>Résultats Biologiques :</strong> Interprétation et alertes
+                </button>
+              </div>
+            </div>
+
+            <!-- Carte 2: Contexte Patient Actif (Injection directe dans le prompt) -->
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 0.6rem; letter-spacing: 0.5px;">
+                📂 Injecter un Patient du Réseau
+              </div>
+              <p style="font-size: 0.74rem; color: #64748b; margin-bottom: 8px;">
+                Sélectionnez un patient pour que l'IA analyse son DMP (antécédents, allergies, ordonnances) :
+              </p>
+              <select id="ai-patient-context-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem; margin-bottom: 8px;">
+                <option value="">— Aucun patient sélectionné —</option>
+              </select>
+              <button type="button" class="btn-primary" style="width: 100%; font-size: 0.78rem; padding: 0.5rem;" onclick="saniApp.aiAnalyzeSelectedPatient()">
+                🔍 Analyser le Dossier Clinique avec l'IA
+              </button>
+            </div>
+
+            <!-- Carte 3: Statistiques d'infrastructure IA -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.85rem; font-size: 0.75rem; color: #64748b;">
+              <div style="font-weight: 700; color: #334155; margin-bottom: 4px;">État de la Connexion IA :</div>
+              <div>Fournisseur actif : <strong id="ai-status-provider">Gemini</strong></div>
+              <div>Modèle connecté : <code id="ai-status-model">gemini-1.5-flash</code></div>
+              <div style="margin-top: 4px;">Supabase MCP : <span style="color: #059669; font-weight: 600;">● Prêt</span></div>
+            </div>
+
+          </div>
+
+          <!-- Colonne Droite : Fenêtre de Chat IA Médical -->
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; height: 680px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            
+            <!-- En-tête de chat -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 0.75rem 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></div>
+                <strong style="font-size: 0.9rem; color: #0f172a;">Session Clinique Interactive</strong>
+                <span style="font-size: 0.73rem; color: #64748b;">(Confidentiel • GAB-SANTE)</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; background: white; border: 1px solid #cbd5e1;" onclick="saniApp.printLastAiMessage()" title="Imprimer le dernier document ou courrier généré par l'IA">
+                  🖨️ <strong>Imprimer la dernière réponse</strong>
+                </button>
+                <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.6rem; background: white; border: 1px solid #cbd5e1; color: #64748b;" onclick="saniApp.clearAiChat()" title="Effacer l'historique de discussion">
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            <!-- Zone de messages défilants -->
+            <div id="ai-chat-messages" style="flex: 1; padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #fafafa;">
+              <!-- Injecté dynamiquement par JavaScript -->
+            </div>
+
+            <!-- Indicateur de saisie/génération dynamique -->
+            <div id="ai-typing-indicator" style="display: none; flex-direction: column; background: #f0f9ff; border-top: 1px solid #bae6fd;">
+              <div class="ai-progress-bar-wrap">
+                <div class="ai-progress-bar-line"></div>
+              </div>
+              <div style="padding: 0.65rem 1.25rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: #0284c7;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="display: flex; gap: 4px; align-items: center;">
+                    <span class="ai-dot"></span>
+                    <span class="ai-dot"></span>
+                    <span class="ai-dot"></span>
+                  </div>
+                  <strong style="color: #0369a1;">Analyse clinique en cours…</strong>
+                  <span style="font-size: 0.74rem; color: #64748b;">(Génération de la réponse médicale via OpenRouter)</span>
+                </div>
+                <span style="font-size: 0.72rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 12px; font-weight: 600;">Temps réel</span>
+              </div>
+            </div>
+
+            <!-- Zone de saisie du prompt -->
+            <div style="background: white; border-top: 1px solid #e2e8f0; padding: 1rem 1.25rem;">
+              <form id="form-ai-chat" onsubmit="saniApp.submitAiPrompt(event)" style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1; position: relative;">
+                  <textarea id="ai-user-prompt" rows="2" placeholder="Posez votre question clinique (ex: Posologie artéméther chez un enfant de 14kg, ou analyse de l'allergie à la pénicilline...)" required style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; resize: none; box-sizing: border-box; font-family: inherit; line-height: 1.4;"></textarea>
+                  <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">Appuyez sur Entrée pour envoyer (Maj+Entrée pour un saut de ligne)</div>
+                </div>
+                <button type="submit" id="ai-btn-send" class="btn-primary" style="padding: 0.75rem 1.4rem; font-size: 0.85rem; font-weight: 700; height: fit-content; display: flex; align-items: center; gap: 6px;">
+                  <span>Envoyer</span> <span>🚀</span>
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Modal DMP Consultation -->
+  <div class="modal-overlay hidden" id="modal-dmp">
+    <div class="modal-container" style="max-width: 820px;">
+      <div class="modal-header">
+        <h3 id="modal-dmp-title" style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">Dossier Médical Partagé</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <div class="modal-body" id="modal-dmp-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal Raccorder une Structure Hospitalière -->
+  <div class="modal-overlay hidden" id="modal-new-hospital">
+    <div class="modal-container" style="max-width: 760px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f4c81;">🏛️ Raccorder une Structure Hospitalière au Réseau GAB-SANTE</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Section 1 : Presets nationaux gabonais -->
+        <div style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem;">
+          <h4 style="font-size: 0.88rem; font-weight: 700; color: #166534; margin-bottom: 0.5rem;">
+            ⚡ Raccordement Rapide en 1 Clic (Établissements de Référence Nationaux)
+          </h4>
+          <p style="font-size: 0.78rem; color: #15803d; margin-bottom: 0.75rem;">
+            Sélectionnez un centre hospitalier pour l'intégrer immédiatement au réseau national avec sa configuration certifiée :
+          </p>
+          <div class="preset-grid" id="preset-hospital-grid">
+            <!-- Rendu dynamique JS -->
+          </div>
+        </div>
+
+        <!-- Section 2 : Formulaire personnalisé -->
+        <form onsubmit="saniApp.submitNewHospital(event)">
+          <h4 style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.75rem;">
+            📝 Déclarer un Autre Établissement (CHR, Clinique Agréée, Hôpital Spécialisé)
+          </h4>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Nom Complet de la Structure :</label>
+              <input type="text" id="new-chu-name" class="form-control" placeholder="Ex: Hôpital Régional de Mouila" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sigle / Code Unique :</label>
+              <input type="text" id="new-chu-code" class="form-control" placeholder="Ex: CHRM" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Localisation Géographique / Ville :</label>
+              <input type="text" id="new-chu-location" class="form-control" placeholder="Ex: Mouila / Ngounié" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pôle d'Excellence & Spécialités :</label>
+              <input type="text" id="new-chu-pole" class="form-control" placeholder="Ex: Médecine Tropicale & Urgences" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Capacité Totale (Lits) :</label>
+              <input type="number" id="new-chu-total-beds" class="form-control" min="10" max="1500" value="150" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lits Déjà Occupés :</label>
+              <input type="number" id="new-chu-occupied-beds" class="form-control" min="0" max="1500" value="105" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lits de Réanimation :</label>
+              <input type="number" id="new-chu-rea-beds" class="form-control" min="0" max="100" value="10" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Directeur Médical / Chef de Pôle :</label>
+              <input type="text" id="new-chu-director" class="form-control" placeholder="Ex: Dr. Ondo Moussavou" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ligne d'Urgence / SAMU Référent :</label>
+              <input type="text" id="new-chu-phone" class="form-control" placeholder="Ex: 1300 / +241 (0)11 50 00 00" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Spécialités Majeures (séparées par virgules) :</label>
+            <input type="text" id="new-chu-specialties" class="form-control" placeholder="Ex: Chirurgie Générale, Infectiologie, Maternité, Scanner">
+          </div>
+
+          <div class="modal-footer" style="padding-left: 0; padding-right: 0; background: transparent; margin-top: 1rem;">
+            <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+            <button type="submit" class="btn-primary">🏛️ Valider le Raccordement au Réseau</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nouveau Transfert -->
+  <div class="modal-overlay hidden" id="modal-transfer">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #b91c1c;">🚑 Déclaration d'un Transfert Inter-CHU (Régulation SAMU)</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitNewTransfer(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Sélectionner le Patient :</label>
+            <select id="transfer-patient-select" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Structure Hospitalière Destinataire :</label>
+            <select id="transfer-dest-select" class="form-control" required>
+              <!-- Rempli dynamiquement -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Niveau de Gravité / Score Vital :</label>
+            <select id="transfer-gravity" class="form-control">
+              <option value="Priorité P1 - Défaillance Vitale Immédiate">🚨 Priorité P1 - Défaillance Vitale Immédiate (SMUR 1300)</option>
+              <option value="Priorité P2 - Urgence Vraie sous 2h">⚠️ Priorité P2 - Urgence Vraie sous 2h</option>
+              <option value="Priorité P3 - Transfert Médicalisé Programmé">ℹ️ Priorité P3 - Transfert Médicalisé Programmé</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Moyen de Transport Sanitaire :</label>
+            <select id="transfer-transport" class="form-control">
+              <option value="Ambulance Médicalisée SAMU 1300">Ambulance Médicalisée SAMU 1300</option>
+              <option value="SMUR Obstétrique Mère-Enfant">SMUR Obstétrique Mère-Enfant</option>
+              <option value="Véhicule Sanitaire Léger (VSL)">Véhicule Sanitaire Léger (VSL)</option>
+              <option value="Hélicoptère Sanitaire Évacuation">Hélicoptère Sanitaire Évacuation</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Motif Médical Précis du Transfert :</label>
+            <textarea id="transfer-motif" class="form-control" rows="3" placeholder="Ex: Nécessité de plateau technique IRM et bloc de traumatologie lourde..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-urgency">Déclencher la Régulation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Nouveau Patient DMP -->
+  <div class="modal-overlay hidden" id="modal-new-patient">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">➕ Création d'un Dossier Médical Partagé</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitNewPatient(event)">
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Nom et Prénom :</label>
+              <input type="text" id="new-patient-name" class="form-control" placeholder="Ex: NGUEMA Paul" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sexe :</label>
+              <select id="new-patient-gender" class="form-control">
+                <option value="M">Masculin</option>
+                <option value="F">Féminin</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Date de Naissance :</label>
+              <input type="date" id="new-patient-dob" class="form-control" required value="1990-01-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">N° CNAMGS / Police d'Assurance :</label>
+              <input type="text" id="new-patient-cnamgs" class="form-control" placeholder="Ex: 900101-CHUL-01">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Régime d'Assurance Maladie / Couverture Santé Gabon :</label>
+            <select id="new-patient-insurance" class="form-control" onchange="saniApp.onInsuranceChange(this.value)">
+              <!-- Rempli dynamiquement par JS -->
+            </select>
+            <div id="insurance-hint-box" style="margin-top: 6px; font-size: 0.76rem; color: #0284c7; background: #f0f9ff; padding: 6px 10px; border-radius: 6px; border: 1px solid #bae6fd;"></div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Groupe Sanguin :</label>
+              <select id="new-patient-blood" class="form-control">
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hôpital d'Adhésion / Enrôlement :</label>
+              <select id="new-patient-chu" class="form-control">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Allergies Médicamenteuses :</label>
+            <input type="text" id="new-patient-allergies" class="form-control" placeholder="Ex: Pénicilline, Aspirine, ou 'Aucune'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pathologies Chroniques (ex: Drépanocytose SS, HTA, Diabète) :</label>
+            <input type="text" id="new-patient-chronic" class="form-control" placeholder="Ex: Drépanocytose SS, HTA">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer le DMP</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Réquisition Sang Officielle CNTS -->
+  <div class="modal-overlay hidden" id="modal-blood">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header" style="background: #991b1b; color: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">🩸</span>
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff; margin: 0;">Bordereau Officiel de Réquisition CNTS</h3>
+            <span style="font-size: 0.72rem; color: #fecaca;">Centre National de Transfusion Sanguine - Libreville (Ministère de la Santé)</span>
+          </div>
+        </div>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem; background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: #fff;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitBloodRequisition(event)">
+        <div class="modal-body">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Établissement Prescripteur :</label>
+              <select id="blood-req-chu" class="form-control" onchange="saniApp.onBloodChuChange(this.value)">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Service Demandeur :</label>
+              <input type="text" id="blood-req-service" class="form-control" placeholder="Ex: Bloc Obstétrique, Déchocage..." required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Patient Bénéficiaire :</label>
+              <select id="blood-req-patient" class="form-control" onchange="saniApp.onBloodPatientChange(this.value)">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Médecin Prescripteur :</label>
+              <input type="text" id="blood-req-doctor" class="form-control" placeholder="Ex: Dr. Ondo, Pr. Ntsame" required>
+            </div>
+          </div>
+
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="color: #991b1b; font-weight: 700;">Degré d'Urgence Vitale :</label>
+                <select id="blood-req-urgency" class="form-control">
+                  <option value="UVI">🚨 UVI - Urgence Vitale Immédiate (< 15 min)</option>
+                  <option value="UVR" selected>⚠️ UVR - Urgence Vitale Relative (< 2 heures)</option>
+                  <option value="US">ℹ️ US - Urgence Standard / Programmée (6-12h)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="color: #991b1b; font-weight: 700;">Type de Produit Sanguin (PSL) :</label>
+                <select id="blood-req-psl-type" class="form-control">
+                  <option value="CGR" selected>CGR - Concentré de Globules Rouges</option>
+                  <option value="PFC">PFC - Plasma Frais Congelé</option>
+                  <option value="CPA">CPA - Concentré Plaquettaire d'Aphérèse</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Groupe Sanguin :</label>
+              <select id="blood-req-type" class="form-control">
+                <option value="O-">O- (Donneur Universel Urgence)</option>
+                <option value="O+" selected>O+</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nombre de Poches :</label>
+              <input type="number" id="blood-req-qty" class="form-control" min="1" max="10" value="2" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Taux d'Hb (g/dL) :</label>
+              <input type="text" id="blood-req-hb" class="form-control" placeholder="Ex: 6.4 g/dL" value="6.5 g/dL">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Diagnostic / Indication Clinique :</label>
+            <input type="text" id="blood-req-indication" class="form-control" placeholder="Ex: Hémorragie de la délivrance, Choc hypovolémique polytraumatisé AVP..." required>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-urgency" style="background: #991b1b; border-color: #7f1d1d;">
+            📄 Émettre & Valider Bordereau CNTS
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Nouvelle Télé-Expertise -->
+  <div class="modal-overlay hidden" id="modal-rcp">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">🩺 Nouvelle Télé-Expertise / Demande d'Avis Spécialisé</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitNewRcp(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Objet de la Demande :</label>
+            <input type="text" id="rcp-title" class="form-control" placeholder="Ex: Avis oncologique sur masse pelvienne" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Patient concerné :</label>
+            <select id="rcp-patient-select" class="form-control" required></select>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Structure Spécialiste Sollicitée :</label>
+              <select id="rcp-dest-chu" class="form-control">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Délai d'Urgence :</label>
+              <select id="rcp-urgency" class="form-control">
+                <option value="Urgence 24h">Urgence 24h</option>
+                <option value="Sous 48h">Sous 48h</option>
+                <option value="Avis Électif / RCP Hebdomadaire">Avis Électif / RCP Hebdomadaire</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Détails Cliniques & Question Posée :</label>
+            <textarea id="rcp-details" class="form-control" rows="3" placeholder="Description clinique, examens réalisés, avis thérapeutique souhaité..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-primary">Transmettre la Demande</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Rendre un Avis Télé-Expertise / RCP -->
+  <div class="modal-overlay hidden" id="modal-rcp-opinion">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">💬 Rédaction & Validation d'un Avis Spécialisé RCP</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitRcpOpinion(event)">
+        <input type="hidden" id="rcp-opinion-id">
+        <div class="modal-body">
+          <div id="rcp-opinion-context-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 1rem; font-size: 0.82rem;">
+            <!-- Rempli dynamiquement avec le résumé de la demande -->
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Médecin Praticien Expert :</label>
+              <input type="text" id="rcp-opinion-doctor" class="form-control" required placeholder="Ex: Dr. Marcel Mbadinga">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CHU / Service d'Expertise :</label>
+              <input type="text" id="rcp-opinion-service" class="form-control" required placeholder="Ex: CHUA Oncologie & Radiothérapie">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Décision Collégiale de la RCP :</label>
+            <select id="rcp-opinion-decision" class="form-control">
+              <option value="Avis favorable - Prise en charge spécialisée acceptée">Avis favorable - Prise en charge spécialisée acceptée</option>
+              <option value="Transfert chirurgical d'urgence recommandé">Transfert chirurgical d'urgence recommandé</option>
+              <option value="Maintien en observation & traitement médical ambulatoire">Maintien en observation & traitement médical ambulatoire</option>
+              <option value="Complément d'investigation diagnostique requis (Biopsie / TEP)">Complément d'investigation diagnostique requis (Biopsie / TEP)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Protocole Thérapeutique & Recommandations Cliniques :</label>
+            <textarea id="rcp-opinion-recommendations" class="form-control" rows="4" placeholder="Conclusions anatomopathologiques, protocole de soins préconisé, posologies, conduite à tenir..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-primary">Valider et Transmettre l'Avis RCP</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Console d'Imagerie Médicale PACS / DICOM -->
+  <div class="modal-overlay hidden" id="modal-pacs-viewer">
+    <div class="modal-container modal-container-large" style="background: #0b1120; color: #fff; max-height: 94vh;">
+      <div class="modal-header" style="background: #091322; border-bottom: 1px solid #1e293b; color: #fff;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">🖼️</span>
+          <div>
+            <div style="font-weight: 700; font-size: 1rem; color: #38bdf8;">Console d'Imagerie Médicale PACS / DICOM GAB-SANTE</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">Visualisation radiologique haute définition certifiée DICOM 3.0</div>
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="PacsService.closeViewer()" style="background: #1e293b; color: #fff; border-color: #334155; padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <div class="modal-body" id="pacs-viewer-body" style="padding: 12px; height: 600px;">
+        <!-- Injecté dynamiquement par PacsService -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ajouter un Acte / Consultation au DMP -->
+  <div class="modal-overlay hidden" id="modal-add-patient-record">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">➕ Ajouter un Acte Médical au DMP</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitPatientRecord(event)">
+        <input type="hidden" id="add-record-patient-id">
+        <div class="modal-body">
+          <div id="add-record-patient-info" style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.82rem;"></div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Date de l'Acte :</label>
+              <input type="date" id="add-record-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Structure Hospitalière :</label>
+              <select id="add-record-chu" class="form-control"></select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Service Médical :</label>
+              <input type="text" id="add-record-service" class="form-control" placeholder="Ex: Cardiologie, Bloc B..." required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Médecin / Praticien :</label>
+              <input type="text" id="add-record-doctor" class="form-control" placeholder="Ex: Dr. Ondo" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nature de l'Acte :</label>
+            <select id="add-record-type" class="form-control">
+              <option value="Consultation Spécialisée">Consultation Spécialisée</option>
+              <option value="Intervention Chirurgicale">Intervention Chirurgicale</option>
+              <option value="Examen d'Imagerie Médicale (Scanner/IRM/Radio)">Examen d'Imagerie Médicale (Scanner/IRM/Radio)</option>
+              <option value="Bilan Biologique / Laboratoire">Bilan Biologique / Laboratoire</option>
+              <option value="Hospitalisation en Soins Intensifs / Réanimation">Hospitalisation en Soins Intensifs / Réanimation</option>
+              <option value="Séance de Chimiothérapie / Radiothérapie">Séance de Chimiothérapie / Radiothérapie</option>
+              <option value="Urgence Médico-Chirurgicale">Urgence Médico-Chirurgicale</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Compte-Rendu Clinique & Résumé :</label>
+            <textarea id="add-record-summary" class="form-control" rows="3" placeholder="Constatations médicales, gestes réalisés, prescriptions associées..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer dans le DMP</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Container Notifications Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ===== MODALE FICHE NAVETTE MÉDICALE OFFICIELLE SAMU 1300 ===== -->
+  <div class="modal-overlay hidden" id="modal-fiche-navette" role="dialog" aria-modal="true" aria-labelledby="fiche-navette-titre">
+    <!-- Conteneur principal de la modale fiche navette -->
+    <div class="modal-box" style="max-width: 820px; width: 95%; padding: 0; overflow: hidden; border-radius: 12px;">
+
+      <!-- Barre d'actions en haut (non imprimable) -->
+      <div class="modal-header no-print" style="background: linear-gradient(135deg, #0ea5e9, #0369a1); color: white; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+        <!-- Titre de la barre d'actions -->
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">📄</span> <!-- Icône document -->
+          <div>
+            <!-- Titre principal de la fiche -->
+            <div style="font-weight: 700; font-size: 1rem;">Fiche Navette Médicale Officielle</div>
+            <!-- Sous-titre avec référence SAMU -->
+            <div style="font-size: 0.75rem; opacity: 0.85;">SAMU 1300 Gabon — Transfert Inter-Hospitalier Certifié</div>
+          </div>
+        </div>
+        <!-- Groupe de boutons d'action -->
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <!-- Bouton d'impression de la fiche -->
+          <button onclick="window.print()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Imprimer la fiche navette">
+            🖨️ Imprimer
+          </button>
+          <!-- Bouton d'export HTML de la fiche -->
+          <button onclick="saniApp.exportFicheNavette()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Exporter en HTML téléchargeable">
+            💾 Exporter HTML
+          </button>
+          <!-- Bouton fermeture de la modale -->
+          <button onclick="saniApp.closeFicheNavette()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1;" title="Fermer">✕</button>
+        </div>
+      </div>
+
+      <!-- Corps de la fiche navette (zone imprimable) -->
+      <div id="fiche-navette-contenu" style="background: white; padding: 1.5rem; max-height: 80vh; overflow-y: auto;">
+        <!-- Le contenu HTML de la fiche est injecté dynamiquement par openFicheNavette() -->
+        <p style="color: #94a3b8; text-align: center; padding: 2rem;">Chargement de la fiche…</p>
+      </div>
+
+    </div>
+  </div>
+  <!-- ===== FIN MODALE FICHE NAVETTE ===== -->
+
+  <!-- ===== MODALE BORDEREAU OFFICIEL RÉQUISITION CNTS (IMPRIMABLE) ===== -->
+  <div class="modal-overlay hidden" id="modal-cnts-requisition" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 840px; width: 95%; padding: 0; overflow: hidden; border-radius: 12px;">
+      <div class="modal-header no-print" style="background: linear-gradient(135deg, #b91c1c, #7f1d1d); color: white; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">🩸</span>
+          <div>
+            <div style="font-weight: 700; font-size: 1rem;">Bordereau Officiel de Réquisition CNTS</div>
+            <div style="font-size: 0.75rem; opacity: 0.85;">Centre National de Transfusion Sanguine — Libreville</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button onclick="window.print()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Imprimer le bordereau">
+            🖨️ Imprimer
+          </button>
+          <button onclick="CntsRequisitionService.exportHtml()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Exporter en HTML téléchargeable">
+            💾 Exporter HTML
+          </button>
+          <button onclick="CntsRequisitionService.closeModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1;" title="Fermer">✕</button>
+        </div>
+      </div>
+      <div id="cnts-requisition-content" style="background: white; padding: 1.5rem; max-height: 80vh; overflow-y: auto;">
+        <p style="color: #94a3b8; text-align: center; padding: 2rem;">Chargement du bordereau…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODALE AJUSTEMENT CAPACITÉ DES LITS ===== -->
+  <div class="modal-overlay hidden" id="modal-adjust-chu-capacity">
+    <div class="modal-container" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="adjust-chu-modal-title" style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">⚙️ Paramétrage Capacité des Lits</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <form onsubmit="saniApp.submitAdjustCapacity(event)">
+        <input type="hidden" id="adjust-chu-id">
+        <div class="modal-body">
+          <p id="adjust-chu-subtitle" style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;"></p>
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <strong style="font-size: 0.85rem; color: #0284c7; display: block; margin-bottom: 8px;">🛏️ Lits Conventionnels d'Hospitalisation</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Lits Totaux :</label>
+                <input type="number" id="adjust-chu-total-beds" class="form-control" min="1" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Lits Occupés :</label>
+                <input type="number" id="adjust-chu-occupied-beds" class="form-control" min="0" required>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <strong style="font-size: 0.85rem; color: #b91c1c; display: block; margin-bottom: 8px;">🫁 Lits de Réanimation & Soins Intensifs (USI)</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Lits Réa Totaux :</label>
+                <input type="number" id="adjust-chu-rea-beds" class="form-control" min="1" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Lits Réa Occupés :</label>
+                <input type="number" id="adjust-chu-rea-occupied" class="form-control" min="0" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Motif de la Réévaluation Capacité :</label>
+            <input type="text" id="adjust-chu-reason" class="form-control" placeholder="Ex: Décharge de lits, pic épidémique, afflux SAMU..." value="Mise à jour régulière de régulation">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-close-modal">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer la Matrice</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODALE JOURNAL D'AUDIT DES MOUVEMENTS DE LITS ===== -->
+  <div class="modal-overlay hidden" id="modal-bed-logs">
+    <div class="modal-container" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">📜 Journal d'Audit des Mouvements de Lits</h3>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 10px;">
+          Traçabilité en temps réel des admissions, libérations et ajustements capacitaires inter-CHU.
+        </p>
+        <div id="bed-logs-list" class="bed-log-container">
+          <!-- Rempli dynamiquement -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary btn-close-modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODALE SAUVEGARDE & RESTAURATION DES DONNÉES ===== -->
+  <div class="modal-overlay hidden" id="modal-backup-restore">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">💾</span>
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0;">Gestion des Données & Sauvegarde</h3>
+            <span style="font-size: 0.72rem; color: #64748b;">Persistance, exportation JSON et restauration de l'environnement GAB-SANTE</span>
+          </div>
+        </div>
+        <button class="btn-secondary btn-close-modal" style="padding: 0.3rem 0.6rem;">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Section 0 : Synchronisation Cloud Supabase (Santé-Gab) -->
+        <div class="backup-card" style="border-color: #86efac; background: #f0fdf4;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">☁️</span>
+                <strong style="color: #166534; font-size: 0.95rem;">Cloud Supabase (Santé-Gab) — Synchronisation Temps Réel</strong>
+                <span class="badge badge-green" style="font-size: 0.65rem;">CONNECTÉ</span>
+              </div>
+              <p style="font-size: 0.77rem; color: #15803d; margin: 4px 0 0 0;">
+                Projet : <code>bxvuvagcstsemxmlykyx.supabase.co</code> • Tables répliquées : Patients DMP, Lits CHU, Ordonnances, SAMU.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-primary" onclick="saniApp.syncForceCloudPush()" style="font-size: 0.8rem; background: #16a34a; border-color: #16a34a; padding: 0.45rem 0.9rem;">
+                ⬆️ Envoyer vers le Cloud
+              </button>
+              <button class="btn-secondary" onclick="saniApp.syncForceCloudPull()" style="font-size: 0.8rem; background: white; border-color: #86efac; color: #166534; padding: 0.45rem 0.9rem;">
+                ⬇️ Récupérer du Cloud
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1 : Sauvegarde JSON -->
+        <div class="backup-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <strong style="color: #0284c7; font-size: 0.95rem;">📥 Exporter la Base de Données Complète (JSON)</strong>
+              <p style="font-size: 0.78rem; color: #64748b; margin: 4px 0 0 0;">
+                Génère un fichier JSON autonome contenant tous les patients DMP, antécédents, transferts SAMU, expertises RCP, stocks de sang CNTS, réquisitions et matrice des lits.
+              </p>
+            </div>
+            <button class="btn-primary" onclick="saniApp.exportDatabaseJson()" style="font-size: 0.8rem; white-space: nowrap;">
+              ⬇️ Télécharger Backup
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2 : Restauration JSON -->
+        <div class="backup-card">
+          <strong style="color: #059669; font-size: 0.95rem; display: block; margin-bottom: 6px;">
+            📤 Restaurer une Sauvegarde JSON
+          </strong>
+          <p style="font-size: 0.78rem; color: #64748b; margin-bottom: 10px;">
+            Chargez un fichier de sauvegarde précédemment exporté pour restaurer immédiatement l'état complet du système.
+          </p>
+          <div class="backup-dropzone" onclick="document.getElementById('backup-file-input').click()">
+            <input type="file" id="backup-file-input" accept=".json" style="display: none;" onchange="saniApp.importDatabaseJson(event)">
+            <span style="font-size: 1.8rem; display: block; margin-bottom: 4px;">📂</span>
+            <strong style="font-size: 0.85rem; color: #0f172a;">Cliquez pour sélectionner un fichier de sauvegarde JSON</strong>
+            <div style="font-size: 0.74rem; color: #64748b; margin-top: 4px;">Format accepté : gab-sante-backup-*.json</div>
+          </div>
+        </div>
+
+        <!-- Section 3 : Réinitialisation Usine -->
+        <div class="backup-card" style="border-color: #fecaca; background: #fff5f5;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <strong style="color: #dc2626; font-size: 0.9rem;">⚠️ Réinitialisation aux Données Officielles Initiales</strong>
+              <p style="font-size: 0.75rem; color: #7f1d1d; margin: 2px 0 0 0;">
+                Efface les modifications locales et recharge les référentiels nationaux d'origine du Gabon.
+              </p>
+            </div>
+            <button class="btn-danger" onclick="saniApp.resetToFactoryData()" style="font-size: 0.78rem;">
+              🔄 Réinitialiser
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary btn-close-modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODALE SYNTHÈSE MÉDICALE IMPRIMABLE DMP ===== -->
+  <div class="modal-overlay hidden" id="modal-patient-summary" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 820px; width: 95%; padding: 0; overflow: hidden; border-radius: 12px;">
+      <div class="modal-header no-print" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">📄</span>
+          <div>
+            <div style="font-weight: 700; font-size: 1rem;">Dossier Médical Partagé — Synthèse Clinique Officielle</div>
+            <div style="font-size: 0.75rem; opacity: 0.85;">Ministère de la Santé du Gabon • CNAMGS Interconnecté</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button onclick="window.print()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Imprimer le dossier">
+            🖨️ Imprimer
+          </button>
+          <button onclick="saniApp.exportPatientSummaryHtml()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Exporter en HTML">
+            💾 Exporter HTML
+          </button>
+          <button onclick="saniApp.closePatientSummary()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1;" title="Fermer">✕</button>
+        </div>
+      </div>
+      <div id="patient-summary-content" style="background: white; padding: 1.5rem; max-height: 80vh; overflow-y: auto;">
+        <p style="color: #94a3b8; text-align: center; padding: 2rem;">Chargement du dossier…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALE CRÉATION D'ORDONNANCE MÉDICALE -->
+  <!-- ============================================================ -->
+  <div id="modal-ordonnance-new" class="modal-overlay hidden" style="z-index: 1100;">
+    <div class="modal-box" style="max-width: 780px; padding: 0; border-radius: 12px; overflow: hidden;">
+      <!-- Header dynamique (couleur selon assurance) -->
+      <div id="ordo-header" style="background: linear-gradient(135deg, #0072ce, #0284c7); color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 1.05rem; font-weight: 800; letter-spacing: 0.3px;">💊 Nouvelle Ordonnance Médicale</div>
+          <div id="ordo-header-subtitle" style="font-size: 0.78rem; opacity: 0.88; margin-top: 2px;">RÉPUBLIQUE GABONAISE — Ministère de la Santé</div>
+        </div>
+        <button onclick="saniApp.closeAllModals()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem;">✕</button>
+      </div>
+
+      <form id="form-ordonnance-new" onsubmit="saniApp.submitNewPrescription(event)" style="padding: 1.25rem; overflow-y: auto; max-height: 80vh; display: flex; flex-direction: column; gap: 1rem;">
+
+        <!-- Ligne 1 : Patient + CHU -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Patient *</label>
+            <select id="ordo-patient" required style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;" onchange="saniApp.onOrdoPatientChange()">
+              <option value="">— Sélectionner un patient —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">CHU / Établissement *</label>
+            <select id="ordo-chu" required style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;">
+              <option value="">— Sélectionner l'établissement —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ligne 2 : Médecin + ONMG + Service -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Nom du Médecin Prescripteur *</label>
+            <input type="text" id="ordo-doctor" placeholder="Dr. Nom Prénom" required style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box;">
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">N° ONMG</label>
+            <input type="text" id="ordo-onmg" placeholder="ONMG-XXXX" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box;">
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Service</label>
+            <input type="text" id="ordo-service" placeholder="Ex: Cardiologie" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box;">
+          </div>
+        </div>
+
+        <!-- Ligne 3 : Assurance + Poids + ALD -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; align-items: end;">
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Régime d'Assurance Maladie *</label>
+            <select id="ordo-insurance" required style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem;" onchange="saniApp.onOrdoInsuranceChange()">
+              <option value="NONE">Non assuré (Ordonnance CHU Standard)</option>
+              <option value="CNAMGS_FONC">CNAMGS — Fonctionnaires (80%)</option>
+              <option value="CNAMGS_PVNR">CNAMGS — PVNR (100%)</option>
+              <option value="CNAMGS_SECT_PRIVE">CNAMGS — Secteur Privé (80%)</option>
+              <option value="CNAMGS_TIS">CNAMGS — TIS (80%)</option>
+              <option value="CNAMGS_ETUD">CNAMGS — Étudiants (80%)</option>
+              <option value="CNSS">CNSS — AT/MP (100%)</option>
+              <option value="ASCOMA">ASCOMA (Assurance Privée)</option>
+              <option value="OGAR">OGAR (Assurance Privée)</option>
+              <option value="AXA">AXA Santé Gabon</option>
+              <option value="SANLAM">Sanlam Gabon</option>
+              <option value="NSIA">NSIA Gabon</option>
+              <option value="MUTUELLE">Mutuelle (Autres)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Poids patient (kg)</label>
+            <input type="number" id="ordo-weight" placeholder="70" min="1" max="300" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 2px;">
+            <input type="checkbox" id="ordo-ald" style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="ordo-ald" style="font-size: 0.82rem; font-weight: 700; color: #0f172a; cursor: pointer;">Protocole ALD<br><span style="font-weight: 400; color: #64748b; font-size: 0.73rem;">(Affection Longue Durée — 100%)</span></label>
+          </div>
+        </div>
+
+        <!-- Builder de médicaments -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+          <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 0.6rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 0.82rem; color: #0f172a;">💊 Médicaments Prescrits</strong>
+            <button type="button" onclick="saniApp.addMedLine()" style="background: #0072ce; color: white; border: none; padding: 0.3rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 700;">+ Ajouter un Médicament</button>
+          </div>
+          <div id="med-builder-container" style="padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <!-- Les lignes médicaments sont injectées dynamiquement -->
+          </div>
+        </div>
+
+        <!-- Notes cliniques -->
+        <div>
+          <label style="font-size: 0.78rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Notes cliniques / Conseils hygiéno-diététiques</label>
+          <textarea id="ordo-notes" rows="3" placeholder="Eviter l'alcool. Repos recommandé. Suivi à J+7..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem; resize: vertical; box-sizing: border-box;"></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 0.5rem; border-top: 1px solid #e2e8f0;">
+          <button type="button" onclick="saniApp.closeAllModals()" style="padding: 0.55rem 1.2rem; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #374151; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Annuler</button>
+          <button type="submit" style="padding: 0.55rem 1.4rem; background: linear-gradient(135deg, #0072ce, #0284c7); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700;">✅ Valider & Générer l'Ordonnance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALE VISUALISATION / IMPRESSION D'ORDONNANCE -->
+  <!-- ============================================================ -->
+  <div id="modal-ordonnance-view" class="modal-overlay hidden" style="z-index: 1200;">
+    <div class="modal-box" style="max-width: 820px; padding: 0; border-radius: 12px; overflow: hidden;">
+      <!-- Header -->
+      <div id="ordo-view-header" style="background: linear-gradient(135deg, #0072ce, #0284c7); color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 1rem; font-weight: 800;">📋 Ordonnance Médicale — Aperçu Avant Impression</div>
+          <div style="font-size: 0.76rem; opacity: 0.85; margin-top: 2px;">RÉPUBLIQUE GABONAISE • Conforme aux normes ONMG</div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button onclick="saniApp.printCurrentPrescription()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">🖨️ Imprimer</button>
+          <button onclick="saniApp.exportCurrentPrescriptionHtml()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">💾 Exporter HTML</button>
+          <button onclick="saniApp.closeAllModals()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1;">✕</button>
+        </div>
+      </div>
+      <!-- Corps de l'ordonnance -->
+      <div id="ordonnance-view-content" style="background: #f8fafc; padding: 1.25rem; max-height: 82vh; overflow-y: auto;">
+        <p style="color: #94a3b8; text-align: center; padding: 2rem;">Chargement de l'ordonnance…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALE IMPRESSION / ÉDITION DU COURRIER DE SORTIE IA -->
+  <!-- ============================================================ -->
+  <div id="modal-ai-document-view" class="modal-overlay hidden" style="z-index: 1250;">
+    <div class="modal-box" style="max-width: 860px; padding: 0; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+      <!-- Header modale (masqué à l'impression) -->
+      <div id="ai-document-view-header" class="no-print" style="background: linear-gradient(135deg, #0072ce, #0284c7); color: white; padding: 0.85rem 1.4rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">🖨️</span>
+          <div>
+            <div id="ai-document-modal-title" style="font-size: 0.95rem; font-weight: 800;">Courrier de Sortie Hospitalier — Aperçu Avant Impression</div>
+            <div style="font-size: 0.72rem; opacity: 0.88; margin-top: 1px;">RÉPUBLIQUE GABONAISE • MINISTÈRE DE LA SANTÉ • GAB-SANTE</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" onclick="saniApp.printAiDocumentDirect()" style="background: #ffffff; color: #0072ce; border: none; padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">
+            🖨️ Lancer l'impression / PDF
+          </button>
+          <button type="button" onclick="saniApp.exportAiDocumentHtml()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+            💾 Exporter HTML
+          </button>
+          <button type="button" onclick="saniApp.copyCurrentAiDocumentText()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+            📋 Copier
+          </button>
+          <button type="button" onclick="saniApp.closeAllModals()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center; margin-left: 4px;">
+            ✕
+          </button>
+        </div>
+      </div>
+      <!-- Corps du document prêt pour l'impression -->
+      <div id="ai-document-view-content" style="background: #ffffff; padding: 2.2rem 2.5rem; max-height: 82vh; overflow-y: auto;">
+        <p style="color: #94a3b8; text-align: center; padding: 2rem;">Génération du document en cours…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALE DÉCLARATION MALADIE ÉPIDÉMIQUE (DGS / OMS GABON) -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-epidemic-alert" style="z-index: 1200;">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #b91c1c, #dc2626); color: white;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">🚨</span>
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: white;">Déclaration de Maladie à Potentiel Épidémique (MDO)</h3>
+            <p style="font-size: 0.72rem; color: #fee2e2; margin: 2px 0 0 0;">Direction Générale de la Santé (DGS) • OMS Gabon • SIMR</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="window.saniEpidemio.closeNewAlertModal()" style="color: white; background: none; border: none; font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem;">
+        <form id="form-new-epidemic-alert" onsubmit="window.saniEpidemio.saveNewAlert(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700;">Pathologie Notifiée (MDO) *</label>
+              <select id="epi-disease-select" class="form-control" required>
+                <option value="MPOX">Mpox (Clade Ib - Variole du Singe)</option>
+                <option value="PALU" selected>Paludisme Grave (Accès pernicieux)</option>
+                <option value="CHOL">Choléra / Diarrhées épidémiques aiguës</option>
+                <option value="YFEV">Fièvre Jaune (Arbovirose)</option>
+                <option value="DENG">Dengue / Chikungunya</option>
+                <option value="TB_MDR">Tuberculose Multirésistante (MDR-TB)</option>
+                <option value="EBOLA">Fièvre Hémorragique Virale (Ébola/Marburg)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 700;">Province du Gabon *</label>
+              <select id="epi-province-select" class="form-control" required>
+                <option value="Estuaire" selected>Estuaire (Libreville / Owendo / Akanda)</option>
+                <option value="Haut-Ogooué">Haut-Ogooué (Franceville / Moanda)</option>
+                <option value="Moyen-Ogooué">Moyen-Ogooué (Lambaréné)</option>
+                <option value="Ngounié">Ngounié (Mouila)</option>
+                <option value="Nyanga">Nyanga (Tchibanga)</option>
+                <option value="Ogooué-Ivindo">Ogooué-Ivindo (Makokou)</option>
+                <option value="Ogooué-Lolo">Ogooué-Lolo (Koulamoutou)</option>
+                <option value="Ogooué-Maritime">Ogooué-Maritime (Port-Gentil)</option>
+                <option value="Woleu-Ntem">Woleu-Ntem (Oyem / Bitam)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label">Centre de Prise en Charge Référent</label>
+              <select id="epi-chu-select" class="form-control">
+                <option value="chul" selected>CHUL Libreville (Service Infectiologie)</option>
+                <option value="chuo">CHUO Owendo</option>
+                <option value="chumef">CHUMEF Jeanne Ebori</option>
+                <option value="chua">CHUA Angondjé</option>
+                <option value="schweitzer">Hôpital Albert Schweitzer (Lambaréné)</option>
+                <option value="chr-franceville">CHR Amissa Bongo (Franceville)</option>
+                <option value="chr-portgentil">CHR Ntchengué (Port-Gentil)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dossier Patient Rattaché (DMP)</label>
+              <select id="epi-patient-select" class="form-control">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label">Cas Suspects *</label>
+              <input type="number" id="epi-suspected" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cas Confirmés</label>
+              <input type="number" id="epi-confirmed" class="form-control" value="0" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Décès</label>
+              <input type="number" id="epi-deaths" class="form-control" value="0" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Niveau d'Alerte</label>
+              <select id="epi-level-select" class="form-control">
+                <option value="VIGILANCE" selected>Vigilance</option>
+                <option value="PRE_ALERT">Pré-Alerte</option>
+                <option value="EPIDEMIC">Seuil Épidémique</option>
+                <option value="CALM">Calme</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label">Médecin / Épidémiologiste Déclarant *</label>
+              <input type="text" id="epi-doctor" class="form-control" placeholder="Ex: Dr. Christiane Obone" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Numéro Ordre (ONMG) *</label>
+              <input type="text" id="epi-onmg" class="form-control" placeholder="Ex: ONMG-1120-GA" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Constatations Cliniques, Laboratoire (CIRMF/CERMEL) & Mesures d'Urgence</label>
+            <textarea id="epi-notes" class="form-control" rows="3" placeholder="Symptômes prédominants, notion de voyage/contact, isolement enclenché, échantillons biologiques envoyés..."></textarea>
+          </div>
+
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="epi-oms-check" checked style="accent-color: #059669; width: 16px; height: 16px;">
+            <label for="epi-oms-check" style="font-size: 0.78rem; color: #065f46; font-weight: 600; cursor: pointer; margin: 0;">
+              Télétransmission sécurisée immédiate au Centre des Opérations d'Urgence de Santé Publique (COUSP Gabon) & Bureau Pays OMS
+            </label>
+          </div>
+
+          <div class="modal-footer" style="padding-left: 0; padding-right: 0; background: transparent;">
+            <button type="button" class="btn-secondary" onclick="window.saniEpidemio.closeNewAlertModal()">Annuler</button>
+            <button type="submit" class="btn-primary" style="background: #dc2626; border-color: #b91c1c;">
+              🚨 Transmettre la Notification Officielle DGS
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALE FICHE OFFICIELLE DGS / OMS (IMPRESSION) -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-oms-report" style="z-index: 1300;">
+    <div class="modal-box" style="max-width: 820px; padding: 0; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+      <div class="no-print" style="background: #0f172a; color: white; padding: 0.85rem 1.4rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">📄</span>
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 800;">Fiche de Notification Sanitaire DGS / OMS Gabon</div>
+            <div style="font-size: 0.72rem; opacity: 0.8;">Ministère de la Santé • République Gabonaise</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" onclick="window.saniEpidemio.printOfficialOmsReport()" style="background: #dc2626; color: white; border: none; padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+            🖨️ Imprimer la Fiche Officielle
+          </button>
+          <button type="button" onclick="window.saniEpidemio.closeOfficialOmsReport()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center;">
+            ✕
+          </button>
+        </div>
+      </div>
+      <div id="oms-report-content" style="max-height: 82vh; overflow-y: auto; padding: 1rem;">
+        <!-- Contenu rempli dynamiquement -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bibliothèque QRCode.js via CDN (génération QR code côté client) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Modules applicatifs séparés (tous dans le même dossier) -->
+  <script src="data.js"></script>
+  <script src="insurances.js"></script>
+  <script src="fhir.js"></script>
+  <script src="radar-map.js"></script>
+  <script src="pacs.js"></script>
+  <script src="cnts-requisition.js"></script>
+  <script src="ordonnance.js"></script>
+  <script src="fiche-navette.js"></script>
+  <script src="ai-assistant.js"></script>
+  <script src="epidemiology.js"></script>
+  <script src="supabase.min.js"></script>
+  <script src="supabase-sync.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
