@@ -1919,3 +1919,152 @@ body.auth-locked {
   margin: auto;
   animation: scaleUp 0.25s ease-out;
 }
+
+/* ==========================================================================
+   SÉPARATION DES PORTAILS : SOIGNANTS vs ADMINISTRATEUR SYSTÈME
+   ========================================================================== */
+
+.auth-portal-wrapper {
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+
+/* Portail Administrateur Haute Sécurité */
+.auth-admin-card {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.7), 0 0 30px rgba(56, 189, 248, 0.08);
+}
+
+.auth-admin-card .auth-card-header {
+  background: linear-gradient(135deg, #0b1329 0%, #1e293b 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-admin-card .auth-title {
+  color: #ffffff;
+}
+
+.auth-admin-card .auth-sub {
+  color: #94a3b8;
+}
+
+.auth-admin-card .auth-form-group label {
+  color: #cbd5e1;
+}
+
+.auth-admin-card .auth-form-group input {
+  background: #1e293b;
+  border-color: #334155;
+  color: #ffffff;
+}
+
+.auth-admin-card .auth-form-group input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+.auth-admin-card .auth-card-footer {
+  background: #0b1329;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #64748b;
+}
+
+/* Bouton de bascule entre les 2 portails */
+.auth-portal-switch-banner {
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.auth-admin-card .auth-portal-switch-banner {
+  background: #0b1329;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-switch-portal {
+  background: transparent;
+  border: 1.5px solid #0072ce;
+  color: #0072ce;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-switch-portal:hover {
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.auth-admin-card .btn-switch-portal {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.auth-admin-card .btn-switch-portal:hover {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* Badge de statut dernière connexion */
+.conn-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.conn-status-online {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.conn-status-recent {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.conn-status-offline {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.conn-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.conn-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
