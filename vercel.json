@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "name": "gab-sante",
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "functions": {
+    "api/ai-proxy.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
+  ]
+}
