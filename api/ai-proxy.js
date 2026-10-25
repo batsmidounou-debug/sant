@@ -1,45 +1,45 @@
 // ============================================================
-// Vercel Serverless Function — Proxy sécurisé OpenRouter
-// /api/ai-proxy.js
+// Vercel Serverless Function — Proxy securise OpenRouter
+// /api/ai-proxy.js  (CommonJS - compatible Vercel Node.js)
 //
 // Lit OPENROUTER_API_KEY depuis les variables d'environnement Vercel
-// et transmet la requête à l'API OpenRouter sans exposer la clé au client.
+// et transmet la requete a OpenRouter sans exposer la cle au client.
 // ============================================================
 
-export default async function handler(req, res) {
-  // CORS — autoriser uniquement les requêtes depuis le même domaine
+module.exports = async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Réponse aux preflight OPTIONS
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Méthode non autorisée. Utilisez POST.' });
+    return res.status(405).json({ error: 'Methode non autorisee. Utilisez POST.' });
   }
 
-  // Lire la clé API depuis les variables d'environnement Vercel (jamais exposée au client)
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
   if (!OPENROUTER_API_KEY) {
     return res.status(500).json({
-      error: 'Clé API non configurée sur le serveur. Ajoutez OPENROUTER_API_KEY dans les variables d\'environnement Vercel.'
+      error: 'Cle API non configuree. Ajoutez OPENROUTER_API_KEY dans les variables Vercel.'
     });
   }
 
   try {
-    const { model, messages, systemPrompt } = req.body;
+    const body = req.body || {};
+    const messages    = body.messages;
+    const model       = body.model       || 'nvidia/nemotron-3.5-lightning:free';
+    const systemPrompt = body.systemPrompt || '';
 
     if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Le champ "messages" est requis et doit être un tableau.' });
+      return res.status(400).json({ error: 'Le champ "messages" est requis.' });
     }
 
-    // Construire le payload pour OpenRouter
     const payload = {
-      model: model || 'nvidia/nemotron-3.5-lightning:free',
+      model: model,
       messages: [
         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
         ...messages
@@ -48,11 +48,10 @@ export default async function handler(req, res) {
       max_tokens: 2048
     };
 
-    // Appel sécurisé vers OpenRouter (clé API côté serveur uniquement)
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': 'Bearer ' + OPENROUTER_API_KEY,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://gab-sante.vercel.app',
         'X-Title': 'GAB-SANTE Assistant IA Clinique'
@@ -61,22 +60,23 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const errJson = await response.json().catch(() => ({}));
-      const errMsg = errJson.error?.message || `Erreur HTTP ${response.status}`;
-      return res.status(response.status).json({ error: `OpenRouter : ${errMsg}` });
+      const errJson = await response.json().catch(function() { return {}; });
+      const errMsg  = (errJson.error && errJson.error.message) ? errJson.error.message : ('Erreur HTTP ' + response.status);
+      return res.status(response.status).json({ error: 'OpenRouter : ' + errMsg });
     }
 
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content;
+    const data  = await response.json();
+    const choices = data.choices;
+    const reply = (choices && choices[0] && choices[0].message) ? choices[0].message.content : null;
 
     if (!reply) {
-      return res.status(502).json({ error: 'Réponse vide renvoyée par le modèle IA.' });
+      return res.status(502).json({ error: 'Reponse vide renvoyee par le modele IA.' });
     }
 
-    return res.status(200).json({ reply });
+    return res.status(200).json({ reply: reply });
 
   } catch (err) {
     console.error('[GAB-SANTE Proxy] Erreur:', err);
-    return res.status(500).json({ error: `Erreur serveur : ${err.message}` });
+    return res.status(500).json({ error: 'Erreur serveur : ' + err.message });
   }
-}
+};
