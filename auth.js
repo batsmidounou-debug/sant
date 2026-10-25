@@ -1326,16 +1326,49 @@
         return;
       }
 
-      // Authentification réussie
+      // Authentification réussie — créer une session admin
       this._adminAuthenticated = true;
-      // Mettre à jour le hint du panel chpwd
-      const hint = document.querySelector('#admin-panel-chpwd p');
-      if (hint) { hint.style.display = 'none'; }
-      // Ouvrir le panneau admin complet et fermer la modale de login admin
+
+      const adminSession = {
+        id: 'ADMIN-GAB-SANTE',
+        matricule: 'ADM-GA-00001',
+        name: 'Administrateur GAB-SANTE',
+        role: 'admin',
+        gender: 'M',
+        titleLabel: 'Administrateur',
+        hospitalId: 'chul',
+        hospitalName: 'CHU de Libreville (CHUL)',
+        service: 'Direction Générale · Système Hospitalier',
+        avatar: '',
+        authenticatedAt: new Date().toISOString(),
+        isAdmin: true
+      };
+
+      this.currentAgent = adminSession;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(adminSession));
+
+      // Fermer la modale de login admin et le portail de connexion
       document.getElementById('auth-admin-login-modal').style.display = 'none';
-      this.openAdminPanel();
-      if (window.saniApp && typeof window.saniApp.showToast === 'function') {
-        window.saniApp.showToast('✅ Connexion administrateur réussie. Bienvenue dans le panneau de gestion.');
+      this.hideLoginPortal();
+
+      // Mettre à jour les badges dans la barre
+      this.updateTopbarUserBadge();
+      this.updateSidebarSessionWidget();
+
+      // Synchroniser l'hôpital
+      this.syncHospitalWithApp(adminSession.hospitalId);
+
+      // Message de bienvenue
+      const welcomeModal = document.getElementById('auth-welcome-modal');
+      const welcomeText  = document.getElementById('auth-welcome-text');
+      const welcomeSub   = document.getElementById('auth-welcome-sub');
+      const welcomeAvatar= document.getElementById('auth-welcome-avatar');
+      if (welcomeText)   welcomeText.textContent  = '🛡️ Bienvenue Administrateur GAB-SANTE !';
+      if (welcomeSub)    welcomeSub.textContent    = 'Accès complet · Gestion du système hospitalier · Tableau de bord';
+      if (welcomeAvatar) welcomeAvatar.textContent = '🏥';
+      if (welcomeModal)  {
+        welcomeModal.style.display = 'flex';
+        setTimeout(() => { if (welcomeModal.style.display === 'flex') welcomeModal.style.display = 'none'; }, 4000);
       }
     }
 
