@@ -787,6 +787,13 @@
               </div>
             </form>
 
+            <!-- Bouton accès Administrateur -->
+            <div style="text-align:center;padding:0 1.5rem 1rem;">
+              <button type="button" onclick="window.AuthService.openAdminLoginModal()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:transparent;border:1.5px solid #334155;border-radius:8px;color:#334155;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                <span>🛡️</span> Accès Administrateur
+              </button>
+            </div>
+
             <!-- Pied de page -->
             <div class="auth-card-footer">
               <span class="auth-footer-shield">🔒</span>
@@ -1167,6 +1174,196 @@
       } catch (err) {
         showAddErr(`❌ Erreur lors de l'ajout : ${err.message}`);
       }
+    }
+
+    // =========================================================================
+    // CONNEXION ET ESPACE ADMINISTRATEUR (depuis le portail de login)
+    // =========================================================================
+
+    // Identifiants admin par défaut (modifiables via le panneau)
+    // Stockés dans localStorage sous la clé 'sani_admin_credentials'
+    _getAdminCredentials() {
+      try {
+        const saved = localStorage.getItem('sani_admin_credentials');
+        if (saved) return JSON.parse(saved);
+      } catch(e) {}
+      return { login: 'admin', password: 'Admin@GABSANTE2026' };
+    }
+
+    _saveAdminCredentials(login, password) {
+      localStorage.setItem('sani_admin_credentials', JSON.stringify({ login, password }));
+    }
+
+    openAdminLoginModal() {
+      let modal = document.getElementById('auth-admin-login-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'auth-admin-login-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+          <div style="background:#fff;border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.4);overflow:hidden;">
+            <!-- En-tête -->
+            <div style="background:#0f172a;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:1.4rem;">🛡️</span>
+                <div>
+                  <div style="color:#fff;font-size:1rem;font-weight:700;">Espace Administrateur</div>
+                  <div style="color:#94a3b8;font-size:0.72rem;">GAB-SANTE · Accès Restreint</div>
+                </div>
+              </div>
+              <button onclick="document.getElementById('auth-admin-login-modal').style.display='none';" style="background:none;border:none;color:#94a3b8;font-size:1.3rem;cursor:pointer;">✕</button>
+            </div>
+
+            <!-- Onglets -->
+            <div style="display:flex;border-bottom:1px solid #e2e8f0;">
+              <button id="admin-tab-login" onclick="window.AuthService._switchAdminTab('login')" style="flex:1;padding:10px;font-size:0.82rem;font-weight:700;color:#0072ce;background:#eff6ff;border:none;border-bottom:2px solid #0072ce;cursor:pointer;">🔐 Connexion Admin</button>
+              <button id="admin-tab-chpwd" onclick="window.AuthService._switchAdminTab('chpwd')" style="flex:1;padding:10px;font-size:0.82rem;font-weight:600;color:#64748b;background:#f8fafc;border:none;border-bottom:2px solid transparent;cursor:pointer;">🔑 Changer MDP Admin</button>
+            </div>
+
+            <!-- Panel Connexion Admin -->
+            <div id="admin-panel-login" style="padding:1.5rem;">
+              <div id="admin-login-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:0.82rem;color:#b91c1c;font-weight:600;"></div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Identifiant Administrateur *</label>
+                  <input type="text" id="admin-login-input" placeholder="Identifiant admin" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;" autocomplete="username">
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Mot de passe Administrateur *</label>
+                  <div style="position:relative;">
+                    <input type="password" id="admin-login-pwd" placeholder="Mot de passe administrateur" style="width:100%;padding:9px 40px 9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;" autocomplete="current-password">
+                    <button type="button" onclick="window.AuthService._toggleAdminPwdVisibility('admin-login-pwd','admin-eye-1')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0;"><span id="admin-eye-1">👁️</span></button>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:1.25rem;display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="document.getElementById('auth-admin-login-modal').style.display='none';" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;font-weight:600;color:#475569;cursor:pointer;">Annuler</button>
+                <button id="admin-login-btn" onclick="window.AuthService.submitAdminLogin()" style="padding:8px 20px;background:#0f172a;color:white;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;">🛡️ Accéder au panneau</button>
+              </div>
+            </div>
+
+            <!-- Panel Changement MDP Admin -->
+            <div id="admin-panel-chpwd" style="padding:1.5rem;display:none;">
+              <p style="font-size:0.78rem;color:#64748b;margin:0 0 1rem;background:#fafafa;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">⚠️ Vous devez d'abord vous authentifier (onglet Connexion) avant de pouvoir changer le mot de passe administrateur.</p>
+              <div id="admin-chpwd-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:0.82rem;color:#b91c1c;font-weight:600;"></div>
+              <div id="admin-chpwd-success" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-left:4px solid #16a34a;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:0.82rem;color:#15803d;font-weight:600;"></div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Mot de passe actuel *</label>
+                  <input type="password" id="admin-chpwd-current" placeholder="Mot de passe actuel" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nouveau mot de passe *</label>
+                  <div style="position:relative;">
+                    <input type="password" id="admin-chpwd-new" placeholder="Minimum 8 caractères" style="width:100%;padding:9px 40px 9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;">
+                    <button type="button" onclick="window.AuthService._toggleAdminPwdVisibility('admin-chpwd-new','admin-eye-2')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0;"><span id="admin-eye-2">👁️</span></button>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Confirmer le nouveau mot de passe *</label>
+                  <input type="password" id="admin-chpwd-confirm" placeholder="Répétez le nouveau mot de passe" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;">
+                </div>
+              </div>
+              <div style="margin-top:1.25rem;display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="window.AuthService._switchAdminTab('login')" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;font-weight:600;color:#475569;cursor:pointer;">← Retour</button>
+                <button onclick="window.AuthService.submitAdminChangePassword()" style="padding:8px 20px;background:#0072ce;color:white;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;">🔑 Changer le mot de passe</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      // Réinitialiser les champs
+      ['admin-login-input','admin-login-pwd','admin-chpwd-current','admin-chpwd-new','admin-chpwd-confirm'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      ['admin-login-error','admin-chpwd-error','admin-chpwd-success'].forEach(id => {
+        const el = document.getElementById(id); if (el) { el.textContent=''; el.style.display='none'; }
+      });
+      this._adminAuthenticated = false;
+      this._switchAdminTab('login');
+      modal.style.display = 'flex';
+    }
+
+    _switchAdminTab(tab) {
+      const loginPanel = document.getElementById('admin-panel-login');
+      const chpwdPanel = document.getElementById('admin-panel-chpwd');
+      const tabLogin   = document.getElementById('admin-tab-login');
+      const tabChpwd   = document.getElementById('admin-tab-chpwd');
+      if (!loginPanel || !chpwdPanel) return;
+      if (tab === 'login') {
+        loginPanel.style.display = 'block'; chpwdPanel.style.display = 'none';
+        if (tabLogin) { tabLogin.style.color='#0072ce'; tabLogin.style.background='#eff6ff'; tabLogin.style.borderBottomColor='#0072ce'; tabLogin.style.fontWeight='700'; }
+        if (tabChpwd) { tabChpwd.style.color='#64748b'; tabChpwd.style.background='#f8fafc'; tabChpwd.style.borderBottomColor='transparent'; tabChpwd.style.fontWeight='600'; }
+      } else {
+        loginPanel.style.display = 'none'; chpwdPanel.style.display = 'block';
+        if (tabChpwd) { tabChpwd.style.color='#0072ce'; tabChpwd.style.background='#eff6ff'; tabChpwd.style.borderBottomColor='#0072ce'; tabChpwd.style.fontWeight='700'; }
+        if (tabLogin) { tabLogin.style.color='#64748b'; tabLogin.style.background='#f8fafc'; tabLogin.style.borderBottomColor='transparent'; tabLogin.style.fontWeight='600'; }
+      }
+    }
+
+    _toggleAdminPwdVisibility(inputId, eyeId) {
+      const inp = document.getElementById(inputId);
+      const eye = document.getElementById(eyeId);
+      if (!inp) return;
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      if (eye) eye.textContent = inp.type === 'password' ? '👁️' : '🙈';
+    }
+
+    submitAdminLogin() {
+      const loginInput = (document.getElementById('admin-login-input')?.value || '').trim();
+      const pwdInput   = (document.getElementById('admin-login-pwd')?.value || '').trim();
+      const errEl      = document.getElementById('admin-login-error');
+
+      const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } };
+      if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+
+      if (!loginInput || !pwdInput) { showErr('Veuillez renseigner l\'identifiant et le mot de passe.'); return; }
+
+      const creds = this._getAdminCredentials();
+      if (loginInput !== creds.login || pwdInput !== creds.password) {
+        showErr('❌ Identifiant ou mot de passe administrateur incorrect.');
+        return;
+      }
+
+      // Authentification réussie
+      this._adminAuthenticated = true;
+      // Mettre à jour le hint du panel chpwd
+      const hint = document.querySelector('#admin-panel-chpwd p');
+      if (hint) { hint.style.display = 'none'; }
+      // Ouvrir le panneau admin complet et fermer la modale de login admin
+      document.getElementById('auth-admin-login-modal').style.display = 'none';
+      this.openAdminPanel();
+      if (window.saniApp && typeof window.saniApp.showToast === 'function') {
+        window.saniApp.showToast('✅ Connexion administrateur réussie. Bienvenue dans le panneau de gestion.');
+      }
+    }
+
+    submitAdminChangePassword() {
+      const current = (document.getElementById('admin-chpwd-current')?.value || '').trim();
+      const newPwd  = (document.getElementById('admin-chpwd-new')?.value || '').trim();
+      const confirm = (document.getElementById('admin-chpwd-confirm')?.value || '').trim();
+      const errEl   = document.getElementById('admin-chpwd-error');
+      const succEl  = document.getElementById('admin-chpwd-success');
+
+      const showErr = (msg) => { if (errEl) { errEl.textContent=msg; errEl.style.display='block'; } if (succEl) succEl.style.display='none'; };
+      const showOk  = (msg) => { if (succEl) { succEl.textContent=msg; succEl.style.display='block'; } if (errEl) errEl.style.display='none'; };
+      if (errEl) { errEl.textContent=''; errEl.style.display='none'; }
+      if (succEl) { succEl.textContent=''; succEl.style.display='none'; }
+
+      if (!current || !newPwd || !confirm) { showErr('Veuillez remplir tous les champs.'); return; }
+      if (newPwd.length < 8) { showErr('Le nouveau mot de passe doit contenir au moins 8 caractères.'); return; }
+      if (newPwd !== confirm) { showErr('Les deux nouveaux mots de passe ne correspondent pas.'); return; }
+
+      const creds = this._getAdminCredentials();
+      if (current !== creds.password) { showErr('❌ Mot de passe actuel incorrect.'); return; }
+
+      // Sauvegarder le nouveau mot de passe
+      this._saveAdminCredentials(creds.login, newPwd);
+      ['admin-chpwd-current','admin-chpwd-new','admin-chpwd-confirm'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      showOk('✅ Mot de passe administrateur modifié avec succès ! Utilisez le nouveau mot de passe à la prochaine connexion.');
     }
 
     escapeHtml(str) {
