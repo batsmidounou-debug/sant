@@ -29,7 +29,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const body = req.body || {};
+    let body = req.body || {};
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch(e) {}
+    }
     const messages    = body.messages;
     const model       = body.model       || 'nvidia/nemotron-3.5-lightning:free';
     const systemPrompt = body.systemPrompt || '';
