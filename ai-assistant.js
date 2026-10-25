@@ -94,10 +94,24 @@ Règles strictes :
   }
 
   /**
+   * Détecte si l'app tourne sur Vercel (proxy sécurisé disponible)
+   * Dans ce cas, la clé API n'est pas nécessaire côté client.
+   */
+  _isVercelDeployment() {
+    const host = window.location.hostname;
+    return host.endsWith('.vercel.app') || host.endsWith('vercel.app');
+  }
+
+  /**
    * Appel unifié vers l'API IA (Gemini ou OpenAI/DeepSeek)
+   * Sur Vercel : utilise le proxy sécurisé /api/ai-proxy (clé côté serveur)
+   * En local / GitHub Pages : utilise la clé API stockée dans localStorage
    */
   async sendMessage(userMessage, contextData = '') {
-    if (!this.config.apiKey) {
+    const onVercel = this._isVercelDeployment();
+
+    // Sur Vercel le proxy gère la clé — sinon vérifier que la clé est présente
+    if (!onVercel && (!this.config.apiKey || this.config.apiKey === 'YOUR_API_KEY_HERE')) {
       throw new Error("Clé API manquante. Veuillez renseigner votre clé API dans l'onglet 'Configuration IA & Prompts'.");
     }
 
@@ -116,7 +130,10 @@ Règles strictes :
 
     let assistantReply = '';
 
-    if (this.config.provider === 'gemini') {
+    // Sur Vercel : appel via le proxy sécurisé (clé API invisible au client)
+    if (onVercel && this.config.provider !== 'gemini') {
+      assistantReply = await this._callVercelProxy(fullUserPrompt);
+    } else if (this.config.provider === 'gemini') {
       assistantReply = await this._callGeminiApi(fullUserPrompt);
     } else {
       assistantReply = await this._callOpenAiCompatibleApi(fullUserPrompt);
@@ -130,6 +147,39 @@ Règles strictes :
     this.saveHistory();
 
     return assistantReply;
+  }
+
+  /**
+   * Appel via le proxy Vercel sécurisé /api/ai-proxy
+   * La clé OPENROUTER_API_KEY reste côté serveur, jamais exposée au navigateur.
+   */
+  async _callVercelProxy(promptText) {
+    const recentMessages = this.chatHistory.slice(-8, -1).map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content
+    }));
+
+    const response = await fetch('/api/ai-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.config.model || 'nvidia/nemotron-3.5-lightning:free',
+        systemPrompt: this.config.systemPrompt || '',
+        messages: [
+          ...recentMessages,
+          { role: 'user', content: promptText }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errJson = await response.json().catch(() => ({}));
+      throw new Error(errJson.error || `Erreur proxy HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.reply) throw new Error('Réponse vide renvoyée par le proxy IA.');
+    return data.reply;
   }
 
   async _callGeminiApi(promptText) {
