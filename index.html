@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GAB-SANTE - Interconnexion des Structures Hospitalières Universitaires du Gabon</title>
-  <link rel="stylesheet" href="styles.css?v=2.2">
+  <link rel="stylesheet" href="styles.css?v=2.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
   <style>
     /* Verrouillage initial de sécurité : la page d'authentification s'affiche immédiatement */
@@ -19,6 +19,31 @@
       user-select: none !important;
     }
   </style>
+  <script>
+    // Bascule immédiate et ultra-rapide des onglets d'authentification
+    function switchAuthPortalTab(tab) {
+      var pAgent = document.getElementById('auth-panel-agent');
+      var pAdmin = document.getElementById('auth-panel-admin');
+      var tAgent = document.getElementById('auth-tab-btn-agent');
+      var tAdmin = document.getElementById('auth-tab-btn-admin');
+      if (!pAgent || !pAdmin) return;
+      if (tab === 'admin') {
+        pAgent.style.display = 'none';
+        pAdmin.style.display = 'block';
+        if (tAgent) tAgent.classList.remove('active');
+        if (tAdmin) tAdmin.classList.add('active');
+        var admInput = document.getElementById('admin-login-input');
+        if (admInput) setTimeout(function(){ admInput.focus(); }, 60);
+      } else {
+        pAgent.style.display = 'block';
+        pAdmin.style.display = 'none';
+        if (tAgent) tAgent.classList.add('active');
+        if (tAdmin) tAdmin.classList.remove('active');
+        var agInput = document.getElementById('auth-input-name');
+        if (agInput) setTimeout(function(){ agInput.focus(); }, 60);
+      }
+    }
+  </script>
 </head>
 <body class="auth-locked">
 
@@ -45,44 +70,96 @@
           <div class="auth-gov-tag">Base Sécurisée · Table sani_staff</div>
         </div>
 
+        <!-- Onglets interactifs : Soignants & Administrateur -->
+        <div class="auth-tabs">
+          <button type="button" id="auth-tab-btn-agent" class="auth-tab-btn active" onclick="switchAuthPortalTab('agent')">
+            <span>🩺</span> Soignants & Personnel
+          </button>
+          <button type="button" id="auth-tab-btn-admin" class="auth-tab-btn" onclick="switchAuthPortalTab('admin')">
+            <span>🛡️</span> Accès Administrateur
+          </button>
+        </div>
+
         <!-- Bandeau d'avertissement / message d'erreur dynamique -->
         <div id="auth-error-box" class="auth-error-banner" style="display: none;"></div>
 
-        <!-- Formulaire de connexion direct et unifié -->
-        <form id="auth-custom-form" class="auth-single-form" onsubmit="window.AuthService.handleFormSubmit(event)">
-          <div class="auth-notice-box">
-            🛡️ <strong>Accès Professionnel :</strong> Veuillez vous identifier pour ouvrir votre session hospitalière.
-          </div>
+        <!-- ================= PANNEAU 1 : SOIGNANTS ================= -->
+        <div id="auth-panel-agent" style="display: block;">
+          <form id="auth-custom-form" class="auth-single-form" onsubmit="window.AuthService ? window.AuthService.handleFormSubmit(event) : event.preventDefault()">
+            <div class="auth-notice-box">
+              🛡️ <strong>Accès Professionnel :</strong> Veuillez vous identifier pour ouvrir votre session hospitalière.
+            </div>
 
-          <div class="auth-form-group">
-            <label for="auth-input-name">Nom complet ou Matricule du soignant *</label>
-            <input type="text" id="auth-input-name" list="auth-staff-list" placeholder="Tapez ou choisissez votre nom (ex: Dr. Eric Baye)" required autocomplete="name">
-            <datalist id="auth-staff-list"></datalist>
-            <span class="auth-input-hint">💡 Tapez votre nom ou votre matricule, ou sélectionnez-le dans la liste.</span>
-          </div>
+            <div class="auth-form-group">
+              <label for="auth-input-name">Nom complet ou Matricule du soignant *</label>
+              <input type="text" id="auth-input-name" list="auth-staff-list" placeholder="Tapez ou choisissez votre nom (ex: Dr. Eric Baye)" required autocomplete="name">
+              <datalist id="auth-staff-list"></datalist>
+              <span class="auth-input-hint">💡 Tapez votre nom ou votre matricule, ou sélectionnez-le dans la liste.</span>
+            </div>
 
-          <div class="auth-form-group">
-            <label for="auth-input-pin">Code d'accès / Mot de passe de service *</label>
-            <div class="auth-password-wrapper">
-              <input type="password" id="auth-input-pin" placeholder="Entrez le mot de passe attribué" required autocomplete="current-password">
-              <button type="button" class="auth-password-toggle-btn" id="btn-toggle-password" onclick="window.AuthService.togglePasswordVisibility()" title="Afficher ou masquer le mot de passe saisie" aria-label="Afficher ou masquer le mot de passe">
-                <span id="auth-password-eye-icon">👁️</span>
+            <div class="auth-form-group">
+              <label for="auth-input-pin">Code d'accès / Mot de passe de service *</label>
+              <div class="auth-password-wrapper">
+                <input type="password" id="auth-input-pin" placeholder="Entrez le mot de passe attribué (ex: 1234)" required autocomplete="current-password">
+                <button type="button" class="auth-password-toggle-btn" id="btn-toggle-password" onclick="window.AuthService && window.AuthService.togglePasswordVisibility()" title="Afficher ou masquer le mot de passe saisie" aria-label="Afficher ou masquer le mot de passe">
+                  <span id="auth-password-eye-icon">👁️</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-form-actions">
+              <button type="submit" class="btn-primary auth-submit-btn">
+                <span>🔐</span> Se Connecter et Ouvrir la Session
               </button>
             </div>
-          </div>
+          </form>
 
-          <div class="auth-form-actions">
-            <button type="submit" class="btn-primary auth-submit-btn">
-              <span>🔐</span> Se Connecter et Ouvrir la Session
+          <!-- Bouton de bascule vers Administrateur -->
+          <div style="text-align:center;padding:0 1.5rem 1rem;">
+            <button type="button" onclick="switchAuthPortalTab('admin')" style="display:inline-flex;align-items:center;gap:8px;padding:9px 22px;background:#f8fafc;border:1.5px solid #0f172a;border-radius:8px;color:#0f172a;font-size:0.83rem;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#0f172a';this.style.color='#fff'" onmouseout="this.style.background='#f8fafc';this.style.color='#0f172a'">
+              <span>🛡️</span> Accéder à l'Espace Administrateur
             </button>
           </div>
-        </form>
+        </div>
 
-        <!-- Bouton accès Administrateur -->
-        <div style="text-align:center;padding:0 1.5rem 1rem;">
-          <button type="button" onclick="window.AuthService.openAdminLoginModal()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:transparent;border:1.5px solid #334155;border-radius:8px;color:#334155;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <span>🛡️</span> Accès Administrateur
-          </button>
+        <!-- ================= PANNEAU 2 : ADMINISTRATEUR ================= -->
+        <div id="auth-panel-admin" style="display: none; padding: 1.5rem 2rem;">
+          <form id="admin-login-form-panel" onsubmit="event.preventDefault(); window.AuthService && window.AuthService.submitAdminLogin();">
+            <div style="background:#0f172a;color:#f8fafc;padding:0.9rem 1.25rem;border-radius:10px;margin-bottom:1.25rem;font-size:0.82rem;line-height:1.4;display:flex;align-items:center;gap:12px;">
+              <span style="font-size:1.6rem;">🛡️</span>
+              <div>
+                <strong style="color:#38bdf8;font-size:0.9rem;">Console DSI & Direction Hospitalière</strong>
+                <div style="color:#94a3b8;font-size:0.75rem;margin-top:2px;">Accès de supervision générale et gestion du réseau hospitalier GAB-SANTE.</div>
+              </div>
+            </div>
+
+            <div id="admin-login-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:0.82rem;color:#b91c1c;font-weight:600;"></div>
+
+            <div class="auth-form-group" style="margin-bottom:1rem;">
+              <label for="admin-login-input" style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Identifiant Administrateur *</label>
+              <input type="text" id="admin-login-input" placeholder="ex: admin" required style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;box-sizing:border-box;" autocomplete="username">
+            </div>
+
+            <div class="auth-form-group" style="margin-bottom:1.25rem;">
+              <label for="admin-login-pwd" style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Mot de passe Administrateur *</label>
+              <div class="auth-password-wrapper" style="position:relative;">
+                <input type="password" id="admin-login-pwd" placeholder="ex: Admin@GABSANTE2026" required style="width:100%;padding:10px 42px 10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;box-sizing:border-box;" autocomplete="current-password">
+                <button type="button" onclick="window.AuthService && window.AuthService._toggleAdminPwdVisibility('admin-login-pwd','admin-eye-panel')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:0;"><span id="admin-eye-panel">👁️</span></button>
+              </div>
+            </div>
+
+            <div class="auth-form-actions" style="margin-bottom:1rem;">
+              <button type="submit" id="admin-login-btn" class="btn-primary" style="width:100%;padding:12px;background:#0f172a;border:none;border-radius:8px;color:#fff;font-size:0.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(15,23,42,0.25);">
+                <span>🛡️</span> Se Connecter en tant qu'Administrateur
+              </button>
+            </div>
+          </form>
+
+          <div style="text-align:center;padding:0.5rem 0;">
+            <button type="button" onclick="switchAuthPortalTab('agent')" style="background:transparent;border:none;color:#0284c7;font-size:0.82rem;font-weight:600;cursor:pointer;text-decoration:underline;">
+              🩺 Revenir au formulaire Soignants
+            </button>
+          </div>
         </div>
 
         <!-- Pied de page -->
@@ -1740,7 +1817,7 @@
   <script src="epidemiology.js"></script>
   <script src="supabase.min.js"></script>
   <script src="supabase-sync.js"></script>
-  <script src="auth.js?v=2.2"></script>
+  <script src="auth.js?v=2.3"></script>
   <script src="app.js"></script>
 
 </body>
