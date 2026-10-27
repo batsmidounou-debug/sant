@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GAB-SANTE - Interconnexion des Structures Hospitalières Universitaires du Gabon</title>
-  <link rel="stylesheet" href="styles.css?v=2.3">
+  <link rel="stylesheet" href="styles.css?v=2.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
   <style>
     /* Verrouillage initial de sécurité : la page d'authentification s'affiche immédiatement */
@@ -20,25 +20,19 @@
     }
   </style>
   <script>
-    // Bascule immédiate et ultra-rapide des onglets d'authentification
+    // Bascule immédiate entre le formulaire Soignants et le formulaire Administrateur
     function switchAuthPortalTab(tab) {
       var pAgent = document.getElementById('auth-panel-agent');
       var pAdmin = document.getElementById('auth-panel-admin');
-      var tAgent = document.getElementById('auth-tab-btn-agent');
-      var tAdmin = document.getElementById('auth-tab-btn-admin');
       if (!pAgent || !pAdmin) return;
       if (tab === 'admin') {
         pAgent.style.display = 'none';
         pAdmin.style.display = 'block';
-        if (tAgent) tAgent.classList.remove('active');
-        if (tAdmin) tAdmin.classList.add('active');
         var admInput = document.getElementById('admin-login-input');
         if (admInput) setTimeout(function(){ admInput.focus(); }, 60);
       } else {
         pAgent.style.display = 'block';
         pAdmin.style.display = 'none';
-        if (tAgent) tAgent.classList.add('active');
-        if (tAdmin) tAdmin.classList.remove('active');
         var agInput = document.getElementById('auth-input-name');
         if (agInput) setTimeout(function(){ agInput.focus(); }, 60);
       }
@@ -68,16 +62,6 @@
             </div>
           </div>
           <div class="auth-gov-tag">Base Sécurisée · Table sani_staff</div>
-        </div>
-
-        <!-- Onglets interactifs : Soignants & Administrateur -->
-        <div class="auth-tabs">
-          <button type="button" id="auth-tab-btn-agent" class="auth-tab-btn active" onclick="switchAuthPortalTab('agent')">
-            <span>🩺</span> Soignants & Personnel
-          </button>
-          <button type="button" id="auth-tab-btn-admin" class="auth-tab-btn" onclick="switchAuthPortalTab('admin')">
-            <span>🛡️</span> Accès Administrateur
-          </button>
         </div>
 
         <!-- Bandeau d'avertissement / message d'erreur dynamique -->
@@ -114,10 +98,10 @@
             </div>
           </form>
 
-          <!-- Bouton de bascule vers Administrateur -->
-          <div style="text-align:center;padding:0 1.5rem 1rem;">
-            <button type="button" onclick="switchAuthPortalTab('admin')" style="display:inline-flex;align-items:center;gap:8px;padding:9px 22px;background:#f8fafc;border:1.5px solid #0f172a;border-radius:8px;color:#0f172a;font-size:0.83rem;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#0f172a';this.style.color='#fff'" onmouseout="this.style.background='#f8fafc';this.style.color='#0f172a'">
-              <span>🛡️</span> Accéder à l'Espace Administrateur
+          <!-- Bouton unique d'accès Administrateur -->
+          <div style="text-align:center;padding:0 1.5rem 1.25rem;">
+            <button type="button" id="btn-admin-access" onclick="switchAuthPortalTab('admin')" style="display:inline-flex;align-items:center;gap:8px;padding:9px 24px;background:#f8fafc;border:1.5px solid #0f172a;border-radius:8px;color:#0f172a;font-size:0.83rem;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#0f172a';this.style.color='#fff'" onmouseout="this.style.background='#f8fafc';this.style.color='#0f172a'">
+              <span>🛡️</span> Accès Administrateur
             </button>
           </div>
         </div>
@@ -1817,7 +1801,7 @@
   <script src="epidemiology.js"></script>
   <script src="supabase.min.js"></script>
   <script src="supabase-sync.js"></script>
-  <script src="auth.js?v=2.3"></script>
+  <script src="auth.js?v=2.4"></script>
   <script src="app.js"></script>
 
 </body>
