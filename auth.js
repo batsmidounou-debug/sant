@@ -1195,11 +1195,22 @@
     }
 
     openAdminLoginModal() {
+      if (typeof switchAuthPortalTab === 'function') {
+        switchAuthPortalTab('admin');
+        return;
+      }
+      const pAgent = document.getElementById('auth-panel-agent');
+      const pAdmin = document.getElementById('auth-panel-admin');
+      if (pAgent && pAdmin) {
+        pAgent.style.display = 'none';
+        pAdmin.style.display = 'block';
+        return;
+      }
       let modal = document.getElementById('auth-admin-login-modal');
       if (!modal) {
         modal = document.createElement('div');
         modal.id = 'auth-admin-login-modal';
-        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:100005;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;';
         modal.innerHTML = `
           <div style="background:#fff;border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.4);overflow:hidden;">
             <!-- En-tête -->
@@ -1348,7 +1359,8 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(adminSession));
 
       // Fermer la modale de login admin et le portail de connexion
-      document.getElementById('auth-admin-login-modal').style.display = 'none';
+      const modalAdmin = document.getElementById('auth-admin-login-modal');
+      if (modalAdmin) modalAdmin.style.display = 'none';
       this.hideLoginPortal();
 
       // Mettre à jour les badges dans la barre
