@@ -206,10 +206,12 @@
 
     /**
      * Charge l'annuaire des soignants directement depuis la table Supabase 'sani_staff'
+     * N'interroge que les colonnes publiques autorisées (exclut pin_code pour la sécurité)
      */
     async loadStaffFromDatabase() {
       try {
-        const response = await fetch(`${SUPABASE_REST_URL}?select=*&order=name.asc`, {
+        const publicColumns = 'id,matricule,name,normalized_name,role,gender,title_label,hospital_id,hospital_name,service,is_active,avatar,last_login';
+        const response = await fetch(`${SUPABASE_REST_URL}?select=${publicColumns}&order=name.asc`, {
           headers: {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -354,6 +356,8 @@
 
     /**
      * TENTATIVE DE CONNEXION AVEC VÉRIFICATION STRICTE EN BASE DE DONNÉES
+     * Priorité : Vérification serveur sécurisée via Supabase RPC verify_staff_login
+     * (Aucun mot de passe ni pin_code n'est renvoyé ou visible par le client)
      */
     async attemptLogin(inputName, inputPin) {
       this.clearError();
@@ -364,84 +368,102 @@
         return false;
       }
 
-      // Recharger la base si nécessaire
+      const enteredPin = String(inputPin || '').trim();
+      if (!enteredPin) {
+        this.showError(`Veuillez renseigner le mot de passe de service.`);
+        return false;
+      }
+
+      // 1. TENTATIVE SÉCURISÉE VIA LA FONCTION RPC SERVEUR POSTGRESQL / SUPABASE
+      try {
+        const rpcUrl = 'https://bxvuvagcstsemxmlykyx.supabase.co/rest/v1/rpc/verify_staff_login';
+        const rpcRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_identifier: nameToSearch,
+            p_pin: enteredPin
+          })
+        });
+
+        if (rpcRes.ok) {
+          const authData = await rpcRes.json();
+          if (authData && authData.success && authData.agent) {
+            console.log('[GAB-SANTE Auth] Authentification serveur Supabase RPC réussie.');
+            return this.applyAuthenticatedSession(authData.agent);
+          } else if (authData && authData.error) {
+            this.showError(`❌ ${authData.error}`);
+            return false;
+          }
+        }
+      } catch (rpcErr) {
+        console.warn('[GAB-SANTE Auth] RPC Supabase indisponible ou non déployé, vérification alternative :', rpcErr);
+      }
+
+      // 2. VÉRIFICATION DE SECOURS (Si le script SQL RLS / RPC n'a pas encore été exécuté dans Supabase)
       if (!this.databaseStaff.length) {
         await this.loadStaffFromDatabase();
       }
 
-      // VÉRIFICATION D'EXISTENCE DANS LA BASE DE DONNÉES
       const matchedAgent = this.findAgentInDatabase(nameToSearch);
 
       if (!matchedAgent) {
-        // REFUS TOTAL : Le nom n'existe pas dans la base de données
         this.showError(`❌ Accès refusé : L'agent « ${this.escapeHtml(nameToSearch)} » n'existe pas dans la base de données du personnel hospitalier (table sani_staff). La session ne peut pas être ouverte.`);
         return false;
       }
 
-      // VÉRIFICATION DU STATUT ACTIF
       if (matchedAgent.is_active === false) {
         this.showError(`❌ Accès refusé : Le compte de « ${this.escapeHtml(matchedAgent.name)} » est désactivé dans la base de données. Contactez l'administrateur.`);
         return false;
       }
 
-      // VÉRIFICATION DU MOT DE PASSE ATTRIBUÉ À L'AGENT EN BASE DE DONNÉES
       const expectedPin = String(matchedAgent.pin_code || '1234');
-      const enteredPin = String(inputPin || '').trim();
-
-      if (!enteredPin) {
-        this.showError(`Veuillez renseigner le mot de passe pour « ${this.escapeHtml(matchedAgent.name)} ».`);
-        return false;
-      }
-
       if (enteredPin !== expectedPin) {
         this.showError(`❌ Mot de passe incorrect pour « ${this.escapeHtml(matchedAgent.name)} ». Veuillez vérifier votre saisie (cliquez sur l'œil 👁️ pour voir le mot de passe tapé).`);
         return false;
       }
 
-      // AUTHENTIFICATION RÉUSSIE : L'agent existe bien dans la base de données
-      const cleanName = this.cleanAgentName(matchedAgent.name);
+      return this.applyAuthenticatedSession(matchedAgent);
+    }
+
+    /**
+     * Valide et installe la session active du soignant authentifié
+     */
+    applyAuthenticatedSession(agent) {
+      const cleanName = this.cleanAgentName(agent.name);
       const sessionAgent = {
-        id: matchedAgent.id,
-        matricule: matchedAgent.matricule,
+        id: agent.id,
+        matricule: agent.matricule,
         name: cleanName,
-        role: matchedAgent.role,
-        gender: matchedAgent.gender || 'M',
-        titleLabel: matchedAgent.title_label || (matchedAgent.role === 'medecin' ? 'Docteur' : (matchedAgent.role === 'sage_femme' ? 'Sage-femme' : 'Infirmière')),
-        hospitalId: matchedAgent.hospital_id,
-        hospitalName: matchedAgent.hospital_name || 'Établissement Hospitalier',
-        service: matchedAgent.service,
+        role: agent.role,
+        gender: agent.gender || 'M',
+        titleLabel: agent.title_label || (agent.role === 'medecin' ? 'Docteur' : (agent.role === 'sage_femme' ? 'Sage-femme' : 'Infirmière')),
+        hospitalId: agent.hospital_id,
+        hospitalName: agent.hospital_name || 'Établissement Hospitalier',
+        service: agent.service,
         avatar: '',
         authenticatedAt: new Date().toISOString(),
-        // Les médecins ont accès au panneau d'administration du personnel
-        isAdmin: matchedAgent.is_admin === true || matchedAgent.role === 'medecin'
+        isAdmin: agent.is_admin === true || agent.role === 'medecin'
       };
 
       this.currentAgent = sessionAgent;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionAgent));
 
-      // Mettre à jour last_login dans Supabase
-      this.updateLastLogin(matchedAgent.id);
-
-      // Supprimer immédiatement tout toast ou message d'erreur restant
+      this.updateLastLogin(agent.id);
       this.clearError();
       if (window.saniApp && typeof window.saniApp.clearAllToasts === 'function') {
         window.saniApp.clearAllToasts();
       }
 
-      // Aligner la structure hospitalière active dans l'interface sans déclencher de toast intempestif
       this.syncHospitalWithApp(sessionAgent.hospitalId);
-
-      // Vider les champs pour ne rien laisser en mémoire
       this.clearInputs();
-
-      // Fermer le portail de connexion
       this.hideLoginPortal();
-
-      // Mettre à jour les badges soignant dans la barre supérieure et la barre latérale
       this.updateTopbarUserBadge();
       this.updateSidebarSessionWidget();
-
-      // Afficher le message d'accueil personnalisé
       this.showWelcomeBanner(sessionAgent);
 
       return true;
@@ -920,7 +942,40 @@
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Vérification…'; }
 
       try {
-        // Vérifier l'ancien mot de passe depuis la base
+        // 1. TENTATIVE SÉCURISÉE VIA LA FONCTION RPC SERVEUR
+        try {
+          const rpcRes = await fetch('https://bxvuvagcstsemxmlykyx.supabase.co/rest/v1/rpc/change_staff_password', {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              p_agent_id: this.currentAgent.id,
+              p_old_pin: current,
+              p_new_pin: newPwd
+            })
+          });
+
+          if (rpcRes.ok) {
+            const result = await rpcRes.json();
+            if (result && result.success) {
+              document.getElementById('auth-change-pwd-modal').style.display = 'none';
+              if (window.saniApp && typeof window.saniApp.showToast === 'function') {
+                window.saniApp.showToast('✅ Mot de passe mis à jour avec succès en base de données !');
+              }
+              return;
+            } else if (result && result.error) {
+              showCpwdError(`❌ ${result.error}`);
+              return;
+            }
+          }
+        } catch (rpcErr) {
+          console.warn('[GAB-SANTE Auth] RPC change_staff_password indisponible, essai direct...', rpcErr);
+        }
+
+        // 2. SECOURS DIRECT SI LE SCRIPT SQL RLS N'EST PAS ENCORE DÉPLOYÉ
         const checkRes = await fetch(`${SUPABASE_REST_URL}?id=eq.${this.currentAgent.id}&select=pin_code`, {
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
         });
