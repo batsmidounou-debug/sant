@@ -192,33 +192,16 @@
     }
 
     async init() {
-      // 1. Récupérer la session stockée si existante
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          this.currentAgent = JSON.parse(saved);
-          if (this.currentAgent) {
-            this.currentAgent.name = this.cleanAgentName(this.currentAgent.name);
-            this.currentAgent.avatar = '';
-            if (this.currentAgent.isAdmin === undefined) {
-              this.currentAgent.isAdmin = this.currentAgent.role === 'medecin';
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.currentAgent));
-          }
-        } catch (e) {
-          this.currentAgent = null;
-        }
-      }
-
-      // 2. Charger les soignants autorisés depuis la table Supabase sani_staff
-      await this.loadStaffFromDatabase();
-
-      // 3. Monter l'interface
+      // 1. Monter immédiatement l'interface d'authentification pour verrouiller l'écran sans délai
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => this.setupUI());
       } else {
         this.setupUI();
       }
+
+      // 2. Charger les soignants autorisés depuis la table Supabase sani_staff en arrière-plan
+      await this.loadStaffFromDatabase();
+      this.populateStaffSuggestions();
     }
 
     /**
@@ -258,15 +241,32 @@
 
     setupUI() {
       this.injectAuthElements();
+      this.populateStaffSuggestions();
+
+      // Toujours afficher le portail d'authentification en premier dès l'arrivée sur l'application
+      this.currentAgent = null;
+      this.showLoginPortal();
       this.updateTopbarUserBadge();
       this.updateSidebarSessionWidget();
+    }
 
-      // Si aucun utilisateur n'est authentifié, afficher l'écran de verrouillage
-      if (!this.currentAgent) {
-        this.showLoginPortal();
-      } else {
-        this.syncHospitalWithApp(this.currentAgent.hospitalId || this.currentAgent.hospital_id);
-      }
+    /**
+     * Remplit le datalist pour que chaque agent puisse voir et sélectionner son profil facilement
+     */
+    populateStaffSuggestions() {
+      const datalist = document.getElementById('auth-staff-list');
+      if (!datalist) return;
+      const staffList = (this.databaseStaff && this.databaseStaff.length > 0)
+        ? this.databaseStaff
+        : FALLBACK_STAFF;
+
+      datalist.innerHTML = staffList.map(s => {
+        const cleanName = this.cleanAgentName(s.name);
+        const matricule = s.matricule || '';
+        const role = s.role || 'Soignant';
+        const hosp = (s.hospital_name || s.hospitalName || '').replace(/\(.*\)/, '').trim();
+        return `<option value="${this.escapeHtml(cleanName)}">${this.escapeHtml(cleanName)} (${matricule} · ${role} · ${hosp})</option>`;
+      }).join('');
     }
 
     /**
