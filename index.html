@@ -4,10 +4,115 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GAB-SANTE - Interconnexion des Structures Hospitalières Universitaires du Gabon</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+  <style>
+    /* Verrouillage initial de sécurité : la page d'authentification s'affiche immédiatement */
+    body.auth-locked {
+      overflow: hidden !important;
+    }
+    body.auth-locked aside.sidebar,
+    body.auth-locked main.main-content {
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+    }
+  </style>
 </head>
-<body>
+<body class="auth-locked">
+
+  <!-- =========================================================================
+       PORTAIL D'AUTHENTIFICATION UNIFIÉ GABON-SANTÉ (VISIBLE EN PREMIER)
+       ========================================================================= -->
+  <div id="auth-dom-components">
+    <div id="auth-portal-overlay" class="auth-portal-overlay" style="display: flex;">
+      <div class="auth-card animate-scale-up">
+        
+        <!-- Entête -->
+        <div class="auth-card-header">
+          <div class="auth-brand-badge">
+            <div class="brand-flag-large">
+              <div class="flag-green"></div>
+              <div class="flag-yellow"></div>
+              <div class="flag-blue"></div>
+            </div>
+            <div>
+              <h2 class="auth-title">GAB-SANTE</h2>
+              <p class="auth-sub">Portail d'Authentification Hospitalière du Gabon</p>
+            </div>
+          </div>
+          <div class="auth-gov-tag">Base Sécurisée · Table sani_staff</div>
+        </div>
+
+        <!-- Bandeau d'avertissement / message d'erreur dynamique -->
+        <div id="auth-error-box" class="auth-error-banner" style="display: none;"></div>
+
+        <!-- Formulaire de connexion direct et unifié -->
+        <form id="auth-custom-form" class="auth-single-form" onsubmit="window.AuthService.handleFormSubmit(event)">
+          <div class="auth-notice-box">
+            🛡️ <strong>Accès Professionnel :</strong> Veuillez vous identifier pour ouvrir votre session hospitalière.
+          </div>
+
+          <div class="auth-form-group">
+            <label for="auth-input-name">Nom complet ou Matricule du soignant *</label>
+            <input type="text" id="auth-input-name" list="auth-staff-list" placeholder="Tapez ou choisissez votre nom (ex: Dr. Eric Baye)" required autocomplete="name">
+            <datalist id="auth-staff-list"></datalist>
+            <span class="auth-input-hint">💡 Tapez votre nom ou votre matricule, ou sélectionnez-le dans la liste.</span>
+          </div>
+
+          <div class="auth-form-group">
+            <label for="auth-input-pin">Code d'accès / Mot de passe de service *</label>
+            <div class="auth-password-wrapper">
+              <input type="password" id="auth-input-pin" placeholder="Entrez le mot de passe attribué" required autocomplete="current-password">
+              <button type="button" class="auth-password-toggle-btn" id="btn-toggle-password" onclick="window.AuthService.togglePasswordVisibility()" title="Afficher ou masquer le mot de passe saisie" aria-label="Afficher ou masquer le mot de passe">
+                <span id="auth-password-eye-icon">👁️</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-form-actions">
+            <button type="submit" class="btn-primary auth-submit-btn">
+              <span>🔐</span> Se Connecter et Ouvrir la Session
+            </button>
+          </div>
+        </form>
+
+        <!-- Bouton accès Administrateur -->
+        <div style="text-align:center;padding:0 1.5rem 1rem;">
+          <button type="button" onclick="window.AuthService.openAdminLoginModal()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:transparent;border:1.5px solid #334155;border-radius:8px;color:#334155;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <span>🛡️</span> Accès Administrateur
+          </button>
+        </div>
+
+        <!-- Pied de page -->
+        <div class="auth-card-footer">
+          <span class="auth-footer-shield">🔒</span>
+          <span>Accès strictement réservé aux professionnels de santé habilités du Gabon. Chaque connexion est enregistrée et auditée.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALE DE BIENVENUE PERSONNALISÉE -->
+    <div id="auth-welcome-modal" class="auth-welcome-overlay" style="display: none;" onclick="window.AuthService.closeWelcomeModal()">
+      <div class="auth-welcome-box animate-bounce-in" onclick="event.stopPropagation()">
+        <div class="auth-welcome-badge" id="auth-welcome-avatar">🏥</div>
+        <div class="auth-welcome-content">
+          <div class="auth-welcome-toplabel">AUTHENTIFICATION RÉUSSIE · BASE DE DONNÉES GABON</div>
+          <h2 id="auth-welcome-text" class="auth-welcome-headline">Bonjour et bienvenue Docteur !</h2>
+          <p id="auth-welcome-sub" class="auth-welcome-subtitle">Session active</p>
+        </div>
+        <div class="auth-welcome-actions-row">
+          <button class="auth-welcome-btn-close" onclick="window.AuthService.closeWelcomeModal()" title="Accéder à l'espace de soins">
+            <span>🏥 Accéder à l'Espace de Soins</span>
+          </button>
+          <button class="auth-welcome-btn-logout" onclick="window.AuthService.logout()" title="Fermer la session immédiatement">
+            <span>🚪 Déconnexion</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Barre latérale / Navigation principale -->
   <aside class="sidebar">
@@ -1635,7 +1740,7 @@
   <script src="epidemiology.js"></script>
   <script src="supabase.min.js"></script>
   <script src="supabase-sync.js"></script>
-  <script src="auth.js"></script>
+  <script src="auth.js?v=2.2"></script>
   <script src="app.js"></script>
 
 </body>
