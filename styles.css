@@ -1160,9 +1160,17 @@ body {
    PORTAIL D'AUTHENTIFICATION ET ACCUEIL DES SOIGNANTS (GAB-SANTE)
    ========================================================================== */
 
-/* Verrouillage du scroll en arrière-plan quand le portail est ouvert */
+/* Verrouillage du scroll et masquage complet du contenu avant authentification */
 body.auth-locked {
   overflow: hidden !important;
+}
+
+body.auth-locked aside.sidebar,
+body.auth-locked main.main-content {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  user-select: none !important;
 }
 
 /* Overlay plein écran */
@@ -1174,7 +1182,7 @@ body.auth-locked {
   bottom: 0;
   background: radial-gradient(circle at 50% 20%, rgba(15, 76, 129, 0.95), rgba(10, 37, 64, 0.98));
   backdrop-filter: blur(8px);
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
